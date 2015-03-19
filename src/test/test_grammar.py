@@ -78,7 +78,7 @@ def generate_expression_tests():
 
 class TestGrammar(unittest.TestCase):
     @params(*symbol_tests)
-    def test_parse_symbolword(self, test_expr, expect_failure=None):
+    def test_parse_symbol(self, test_expr, expect_failure=None):
         """
             A symbol begins with a letter or an underscore, and may contain any combination of
             letters, numbers, dot (".") and underscore ("_")
@@ -91,7 +91,7 @@ class TestGrammar(unittest.TestCase):
             self.assertRaises(expect_failure, Symbol.parseString, test_expr)
 
     @params(*value_tests)
-    def test_parse_valueword(self, test_expr, expect_failure=None):
+    def test_parse_value(self, test_expr, expect_failure=None):
         """
             A value is a quoted string, with single or double quotes, or a number.
         """
@@ -103,7 +103,7 @@ class TestGrammar(unittest.TestCase):
             self.assertRaises(expect_failure, Value.parseString, test_expr)
 
     @params(*regex_tests)
-    def test_parse_regexword(self, test_expr, expect_failure=None):
+    def test_parse_regex(self, test_expr, expect_failure=None):
         """
             A regex is a string surrounded by /
         """
@@ -140,17 +140,51 @@ class TestGrammar(unittest.TestCase):
             self.assertRaises(ParseException, List.parseString, test_expr)
 
     @params(*term_parse_tests)
-    def test_parse_terms(self, test_expr, expect_failure=None):
+    def test_parse_expression(self, test_expr, expect_failure=None):
         """
         """
         from filtration import Expression
 
-        toks = Expression.parseString(test_expr)
+        Expression.parseString(test_expr)
 
     @params(*generate_expression_tests())
-    def test_parse_expressions(self, test_expr):
+    def test_parse_filter(self, test_expr):
         """
         """
         from filtration import Filter
 
-        toks = Filter.parseString(test_expr)
+        Filter.parseString(test_expr)
+
+    def test_evaluate_symbol(self):
+        """
+        """
+        from filtration import Symbol
+
+        sym = Symbol.parseString("symbol")
+        assert sym({"symbol": "value"}) == "value"
+
+    def test_evaluate_value(self):
+        """
+        """
+        from filtration import Value
+
+        val = Value.parseString("'value'")
+        assert val({}) == "value"
+
+    def test_evaluate_regex(self):
+        """
+        """
+        import re
+        from filtration import Regex
+
+        rex = Regex.parseString("/abc/")
+        assert rex({}) == re.compile("abc")
+
+    def test_evaluate_subnet(self):
+        """
+        """
+        import ipcalc
+        from filtration import Subnet
+
+        subnet = Subnet.parseString("192.168.0.0/16")
+        assert subnet({}).network() == "192.168.0.0" and subnet({}).size() == 65536
