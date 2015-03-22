@@ -1,0 +1,5 @@
+[run]
+omit = src/test/*
+
+[paths]
+source = src/
