@@ -1,1 +1,1 @@
-from .tokens import *
+from .tokens import Expression

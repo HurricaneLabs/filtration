@@ -90,15 +90,6 @@ def generate_expression_tests():
 
 
 class TestGrammar(unittest.TestCase):
-    def test_base_token(self):
-        """
-        """
-        from filtration.tokens import BaseToken
-
-        class BadToken(BaseToken): pass
-
-        self.assertRaises(ParseException, BadToken.parseString, "")
-
     @params(*symbol_tests)
     def test_parse_symbol(self, test_expr, expect_failure=None):
         """
@@ -180,7 +171,7 @@ class TestGrammar(unittest.TestCase):
     def test_evaluate_symbol(self):
         """
         """
-        from filtration import Symbol
+        from filtration.tokens import Symbol
 
         sym = Symbol.parseString("symbol")
         assert sym({"symbol": "value"}) == "value"
@@ -188,7 +179,7 @@ class TestGrammar(unittest.TestCase):
     def test_evaluate_value(self):
         """
         """
-        from filtration import Value
+        from filtration.tokens import Value
 
         val = Value.parseString("'value'")
         assert val({}) == "value"
@@ -197,7 +188,7 @@ class TestGrammar(unittest.TestCase):
         """
         """
         import re
-        from filtration import Regex
+        from filtration.tokens import Regex
 
         rex = Regex.parseString("/abc/")
         assert rex({}) == re.compile("abc")
@@ -206,7 +197,7 @@ class TestGrammar(unittest.TestCase):
         """
         """
         import ipcalc
-        from filtration import Subnet
+        from filtration.tokens import Subnet
 
         subnet = Subnet.parseString("192.168.0.0/16")
         assert subnet({}).network() == "192.168.0.0" and subnet({}).size() == 65536

@@ -3,7 +3,10 @@ from pyparsing import Combine,Forward,Group,CaselessLiteral,Keyword,Literal,Matc
 from pyparsing import Optional,ParseException,QuotedString,Suppress,Word
 from pyparsing import opAssoc,operatorPrecedence,quotedString,removeQuotes
 
-from .parser import *
+#from .parser import *
+from .parser import parseRegex,parseSubnet,parseSymbol,parseValue,parseList
+from .parser import parseAnd,parseOr,parseNot
+from .parser import parseExpression,parseStatement
 
 
 Regex = QuotedString("/").setParseAction(parseRegex)
