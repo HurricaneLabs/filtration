@@ -3,13 +3,13 @@ from pyparsing import Combine,Forward,Group,CaselessLiteral,Keyword,Literal,Matc
 from pyparsing import Optional,ParseException,QuotedString,Suppress,Word
 from pyparsing import opAssoc,operatorPrecedence,quotedString,removeQuotes
 
-#from .parser import *
 from .parser import parseRegex,parseSubnet,parseSymbol,parseValue,parseList
 from .parser import parseAnd,parseOr,parseNot
 from .parser import parseExpression,parseStatement
 
 
-Regex = QuotedString("/").setParseAction(parseRegex)
+RegexFlags = Word("ims")
+Regex = (QuotedString("/") + Optional(RegexFlags)).setParseAction(parseRegex)
 
 Ip4Octet = Word(nums, max=3)
 Ip4Addr = Combine(Ip4Octet + "." + Ip4Octet + "." + Ip4Octet + "." + Ip4Octet)

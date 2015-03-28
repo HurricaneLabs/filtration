@@ -32,17 +32,38 @@ class Value(BaseToken):
     def __call__(self, context):
         return self.value
 
+    def __repr__(self):
+        return repr(self.value)
+
 
 class Regex(BaseToken):
     compile_error = "Invalid regex: {0}"
     token = grammar.Regex
 
+    @property
+    def flags(self):
+        import re
+        flags = 0
+        for flag in self._flags:
+            flags |= getattr(re, flag.upper())
+        return flags
+
     def compile(self, tokens):
         import re
-        self.rex = re.compile(tokens[0])
+        self._raw = tokens[0]
+
+        if len(tokens) > 1:
+            self._flags = tokens[1]
+        else:
+            self._flags = ""
+
+        self.rex = re.compile(tokens[0], flags=self.flags)
 
     def __call__(self, context):
         return self.rex
+
+    def __repr__(self):
+        return "/{0}/{1}".format(self._raw, self._flags)
 
 class Subnet(BaseToken):
     compile_error = "Invalid subnet: {0}"
@@ -55,15 +76,21 @@ class Subnet(BaseToken):
     def __call__(self, context):
         return self.subnet
 
+    def __repr__(self):
+        return str(self.subnet)
+
 class List(BaseToken):
     token = grammar.List
 
     def compile(self, tokens):
-        self.items = tokens[0]
+        self.items = tokens[0].asList()
 
     def __call__(self, context):
         ret = [ item(context) for item in self.items ]
         return ret
+
+    def __repr__(self):
+        return repr(self.items)
 
 class Symbol(BaseToken):
     token = grammar.Symbol
@@ -81,6 +108,9 @@ class Symbol(BaseToken):
                 value = None
                 break
         return value
+
+    def __repr__(self):
+        return self.value
 
 class Statement(FiltrationBase):
     token = grammar.Statement
@@ -111,6 +141,11 @@ class Statement(FiltrationBase):
 
         return func(lhs, rhs)
 
+    def __repr__(self):
+        if self.op is None:
+            return repr(self.lhs)
+        return "{0} {1} {2}".format(repr(self.lhs), self.op, repr(self.rhs))
+
 class Expression(FiltrationBase):
     token = grammar.Expression
 
@@ -119,6 +154,9 @@ class Expression(FiltrationBase):
 
     def __call__(self, context):
         return self.lhs(context)
+
+    def __repr__(self):
+        return repr(self.lhs)
 
 class BaseStatement:
     pass
@@ -131,6 +169,9 @@ class NotStatement(BaseStatement):
         lhs = self.lhs(context)
         return not lhs
 
+    def __repr__(self):
+        return "not {0}".format(repr(self.lhs))
+
 class AndStatement(BaseStatement):
     def __init__(self, string, loc, tokens):
         self.items = tokens[0][0::2]
@@ -138,9 +179,15 @@ class AndStatement(BaseStatement):
     def __call__(self, context):
         return all([ item(context) for item in self.items ])
 
+    def __repr__(self):
+        return "({0})".format(" and ".join([ repr(item) for item in self.items ]))
+
 class OrStatement(BaseStatement):
     def __init__(self, string, loc, tokens):
         self.items = tokens[0][0::2]
 
     def __call__(self, context):
         return any([ item(context) for item in self.items ])
+
+    def __repr__(self):
+        return "({0})".format(" or ".join([ repr(item) for item in self.items ]))

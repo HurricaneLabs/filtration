@@ -1,4 +1,3 @@
-import random
 import unittest
 
 from nose2.tools import params
@@ -27,6 +26,8 @@ value_tests = [
 
 regex_tests = [
     "/regex/",
+    "/regex/i",
+    "/regex/im",
     ("/not[a-valid/", ParseException),
     ("/not(a-valid/", ParseException),
     ("/not-a-valid)", ParseException),
@@ -70,18 +71,6 @@ expression_parse_tests = [
     "({0} or {1}) and {2}",
 ]
 
-expression_evaluate_tests = {
-    "bare_symbol": ("symbol_true", "symbol_false"),
-    "nested_dict": ("dict.symbol_true", "dict.doesnt_exist"),
-    "==": ("symbol_int == 1", "symbol_int == 2"),
-    "!=": ("symbol_int != 2", "symbol_int != 1"),
-    "<": ("symbol_int < 2", "symbol_int < 1"),
-    "<=": ("symbol_int <= 1", "symbol_int <= 0"),
-    ">": ("symbol_int > 0", "symbol_int > 1"),
-    ">=": ("symbol_int >= 1", "symbol_int >= 2"),
-    "in": ("symbol_str in 'a','b'", "symbol_str in 'c','d'"),
-    "=~": ("symbol_str =~ /^a/", "symbol_str =~ /c$/"),
-}
 
 def generate_expression_tests():
     for test_expr_fmt in expression_parse_tests:
@@ -167,115 +156,3 @@ class TestGrammar(unittest.TestCase):
         from filtration.grammar import Expression
 
         Expression.parseString(test_expr)
-
-    def test_evaluate_symbol(self):
-        """
-        """
-        from filtration.tokens import Symbol
-
-        sym = Symbol.parseString("symbol")
-        assert sym({"symbol": "value"}) == "value"
-
-    def test_evaluate_value(self):
-        """
-        """
-        from filtration.tokens import Value
-
-        val = Value.parseString("'value'")
-        assert val({}) == "value"
-
-    def test_evaluate_regex(self):
-        """
-        """
-        import re
-        from filtration.tokens import Regex
-
-        rex = Regex.parseString("/abc/")
-        assert rex({}) == re.compile("abc")
-
-    def test_evaluate_subnet(self):
-        """
-        """
-        import ipcalc
-        from filtration.tokens import Subnet
-
-        subnet = Subnet.parseString("192.168.0.0/16")
-        assert subnet({}).network() == "192.168.0.0" and subnet({}).size() == 65536
-
-    @params(*expression_evaluate_tests.values())
-    def test_evaluate_expression(self, test_expr_true, test_expr_false=None):
-        """
-        """
-        from filtration import Expression
-
-        context = {
-            "symbol_true": True,
-            "symbol_False": False,
-            "symbol_int": 1,
-            "symbol_str": "a",
-        }
-        context["dict"] = context
-
-        expr = Expression.parseString(test_expr_true)
-        assert expr(context)
-
-        expr = Expression.parseString(test_expr_false)
-        self.assertFalse(expr(context))
-
-    @params(*expression_evaluate_tests.values())
-    def test_evaluate_not_expression(self, test_expr_true, test_expr_false=None):
-        """
-        """
-        from filtration import Expression
-
-        context = {
-            "symbol_true": True,
-            "symbol_False": False,
-            "symbol_int": 1,
-            "symbol_str": "a",
-        }
-        context["dict"] = context
-
-        expr = Expression.parseString("not {0}".format(test_expr_true))
-        self.assertFalse(expr(context))
-
-        expr = Expression.parseString("not {0}".format(test_expr_false))
-        assert expr(context)
-
-    @params(*expression_evaluate_tests.values())
-    def test_evaluate_and_expression(self, test_expr_true, test_expr_false=None):
-        """
-        """
-        from filtration import Expression
-
-        context = {
-            "symbol_true": True,
-            "symbol_False": False,
-            "symbol_int": 1,
-            "symbol_str": "a",
-        }
-        context["dict"] = context
-
-        test_expr = "{0} and {1}".format(test_expr_true, test_expr_false)
-        expr = Expression.parseString(test_expr)
-        self.assertFalse(expr(context))
-
-        test_expr = "not({0} and {1})".format(test_expr_true, test_expr_false)
-        expr = Expression.parseString(test_expr)
-        self.assertTrue(expr(context))
-
-        test_expr = "{0} and not {1}".format(test_expr_true, test_expr_false)
-        expr = Expression.parseString(test_expr)
-        self.assertTrue(expr(context))
-
-        test_expr = "not {0} and {1}".format(test_expr_true, test_expr_false)
-        expr = Expression.parseString(test_expr)
-        self.assertFalse(expr(context))
-
-        test_expr = "{0} or {1}".format(test_expr_true, test_expr_false)
-        expr = Expression.parseString(test_expr)
-        self.assertTrue(expr(context))
-
-        test_expr = "not({0} or {1})".format(test_expr_true, test_expr_false)
-        expr = Expression.parseString(test_expr)
-        self.assertFalse(expr(context))
