@@ -149,6 +149,11 @@ class Statement(FiltrationBase):
 class Expression(FiltrationBase):
     token = grammar.Expression
 
+    @classmethod
+    def parseQsString(cls, qs):
+        from .parser import parseQsChunk
+        return cls.parseString(" and ".join([parseQsChunk(_) for _ in qs.split("&")]))
+
     def __init__(self, string, loc, tokens):
         self.lhs = tokens[0]
 

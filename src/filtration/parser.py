@@ -1,3 +1,16 @@
+from pyparsing import ParseException
+
+
+qs_operations = {
+    "eq": "==",
+    "ne": "!=",
+    "lt": "<",
+    "le": "<=",
+    "gt": ">",
+    "ge": ">=",
+}
+
+
 def parseRegex(*args, **kwargs):
     from .tokens import Regex
     return Regex(*args, **kwargs)
@@ -37,3 +50,34 @@ def parseAnd(*args, **kwargs):
 def parseOr(*args, **kwargs):
     from .tokens import OrStatement
     return OrStatement(*args, **kwargs)
+
+def parseQsChunk(chunk):
+    chunk = chunk.lower()
+
+    (qs_lhs, qs_rhs) = chunk.split("=", 1)
+
+    qs_lhs_parts = qs_lhs.split("__")
+    qs_op = qs_lhs_parts.pop(-1)
+    lhs = ".".join(qs_lhs_parts)
+
+    if qs_op in qs_operations:
+        from .grammar import Value
+        op = qs_operations[qs_op]
+        if op in ("<", "<=", ">", ">="):
+            rhs = int(qs_rhs)
+        else:
+            rhs = "'{0}'".format(qs_rhs)
+    elif qs_op in ("contains", "icontains"):
+        op = "=~"
+        rhs = "/{0}/".format(qs_rhs)
+    elif qs_op in ("startswith", "istartswith"):
+        op = "=~"
+        rhs = "/^{0}/".format(qs_rhs)
+    elif qs_op in ("endswith", "iendswith"):
+        op = "=~"
+        rhs = "/{0}$/".format(qs_rhs)
+
+    if qs_op in ("icontains", "istartswith", "iendswith"):
+        rhs += "i"
+
+    return "{0} {1} {2}".format(lhs, op, rhs)
