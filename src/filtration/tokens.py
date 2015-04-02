@@ -26,6 +26,10 @@ class BaseToken(FiltrationBase):
 class Value(BaseToken):
     token = grammar.Value
 
+    @property
+    def as_mongo(self):
+        return self.value
+
     def compile(self, tokens):
         self.value = tokens[0]
 
@@ -48,6 +52,10 @@ class Regex(BaseToken):
             flags |= getattr(re, flag.upper())
         return flags
 
+    @property
+    def as_mongo(self):
+        return repr(self)
+
     def compile(self, tokens):
         import re
         self._raw = tokens[0]
@@ -69,6 +77,10 @@ class Subnet(BaseToken):
     compile_error = "Invalid subnet: {0}"
     token = grammar.Subnet
 
+    @property
+    def as_mongo(self):
+        return list(self.subnet)
+
     def compile(self, tokens):
         import ipcalc
         self.subnet = ipcalc.Network(tokens[0])
@@ -82,6 +94,10 @@ class Subnet(BaseToken):
 class List(BaseToken):
     token = grammar.List
 
+    @property
+    def as_mongo(self):
+        return [ item.as_mongo for item in self.items ]
+
     def compile(self, tokens):
         self.items = tokens[0].asList()
 
@@ -94,6 +110,10 @@ class List(BaseToken):
 
 class Symbol(BaseToken):
     token = grammar.Symbol
+
+    @property
+    def as_mongo(self):
+        return self.value
 
     def compile(self, tokens):
         self.value = tokens[0]
@@ -119,6 +139,24 @@ class Statement(FiltrationBase):
         if len(tokens) == 1:
             tokens = (tokens[0], None, None)
         (self.lhs, self.op, self.rhs) = tokens
+
+    @property
+    def as_mongo(self):
+        if self.op is None:
+            return { self.lhs.as_mongo: {"$exists": True} }
+
+        as_mongo = {
+            "==": lambda lhs,rhs: { lhs: rhs },
+            "!=": lambda lhs,rhs: { lhs: {"$ne": rhs } },
+            "<": lambda lhs,rhs: { lhs: {"$lt": rhs } },
+            "<=": lambda lhs,rhs: { lhs: {"$lte": rhs } },
+            ">": lambda lhs,rhs: { lhs: {"$gt": rhs } },
+            ">=": lambda lhs,rhs: { lhs: {"$gte": rhs } },
+            "=~": lambda lhs,rhs: { lhs: {"$regex": rhs } },
+            "in": lambda lhs,rhs: { lhs: {"$in": rhs } },
+        }[self.op]
+
+        return as_mongo(self.lhs.as_mongo, self.rhs.as_mongo)
 
     def __call__(self, context):
         lhs = self.lhs(context)
@@ -148,6 +186,10 @@ class Statement(FiltrationBase):
 
 class Expression(FiltrationBase):
     token = grammar.Expression
+
+    @property
+    def as_mongo(self):
+        return self.lhs.as_mongo
 
     @classmethod
     def parseQsString(cls, qs):

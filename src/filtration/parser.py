@@ -81,3 +81,18 @@ def parseQsChunk(chunk):
         rhs += "i"
 
     return "{0} {1} {2}".format(lhs, op, rhs)
+
+def parseDate(string, loc, tokens):
+    import datetime
+    d = datetime.date(*tokens)
+    return datetime.datetime.combine(d, datetime.time.min)
+
+def parseTime(string, loc, tokens):
+    import datetime
+    t = datetime.time(*tokens)
+    return datetime.datetime.combine(datetime.date.today(), t)
+
+def parseDateTime(string, loc, tokens):
+    import datetime
+    (date, time) = tokens[:2]
+    return datetime.datetime.combine(date.date(), time.time())

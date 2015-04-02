@@ -23,6 +23,7 @@ expression_evaluate_tests = [
     ("symbol_int >= 1", "symbol_int >= 2"),
     ("symbol_str in 'a','b'", "symbol_str in 'c','d'"),
     ("symbol_str =~ /^a/", "symbol_str =~ /c$/"),
+    ("symbol_dt > 2015-03-01", "symbol_dt < 2000-01-01"),
 ]
 
 expression_repr_tests = [
@@ -110,6 +111,7 @@ class TestTokens(unittest.TestCase):
     def test_evaluate_expression(self, test_expr_true, test_expr_false=None):
         """
         """
+        import datetime
         from filtration import Expression
 
         context = {
@@ -117,6 +119,7 @@ class TestTokens(unittest.TestCase):
             "symbol_False": False,
             "symbol_int": 1,
             "symbol_str": "a",
+            "symbol_dt": datetime.datetime.now(),
         }
         context["dict"] = context
 
@@ -139,6 +142,7 @@ class TestTokens(unittest.TestCase):
     def test_evaluate_not_expression(self, test_expr_true, test_expr_false=None):
         """
         """
+        import datetime
         from filtration import Expression
 
         context = {
@@ -146,6 +150,7 @@ class TestTokens(unittest.TestCase):
             "symbol_False": False,
             "symbol_int": 1,
             "symbol_str": "a",
+            "symbol_dt": datetime.datetime.now(),
         }
         context["dict"] = context
 
@@ -168,6 +173,7 @@ class TestTokens(unittest.TestCase):
     def test_evaluate_and_expression(self, test_expr_true, test_expr_false=None):
         """
         """
+        import datetime
         from filtration import Expression
 
         context = {
@@ -175,6 +181,7 @@ class TestTokens(unittest.TestCase):
             "symbol_False": False,
             "symbol_int": 1,
             "symbol_str": "a",
+            "symbol_dt": datetime.datetime.now(),
         }
         context["dict"] = context
 
@@ -216,6 +223,7 @@ class TestTokens(unittest.TestCase):
     def test_evaluate_or_expression(self, test_expr_true, test_expr_false=None):
         """
         """
+        import datetime
         from filtration import Expression
 
         context = {
@@ -223,6 +231,7 @@ class TestTokens(unittest.TestCase):
             "symbol_False": False,
             "symbol_int": 1,
             "symbol_str": "a",
+            "symbol_dt": datetime.datetime.now(),
         }
         context["dict"] = context
 
