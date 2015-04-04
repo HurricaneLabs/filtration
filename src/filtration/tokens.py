@@ -209,6 +209,10 @@ class BaseStatement:
     pass
 
 class NotStatement(BaseStatement):
+    @property
+    def as_mongo(self):
+        return {"$not": self.lhs.as_mongo}
+
     def __init__(self, string, loc, tokens):
         _,self.lhs = tokens[0]
 
