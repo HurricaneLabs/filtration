@@ -220,6 +220,10 @@ class NotStatement(BaseStatement):
         return "not {0}".format(repr(self.lhs))
 
 class AndStatement(BaseStatement):
+    @property
+    def as_mongo(self):
+        return {"$and": [ item.as_mongo for item in self.items ]}
+
     def __init__(self, string, loc, tokens):
         self.items = tokens[0][0::2]
 
@@ -230,6 +234,10 @@ class AndStatement(BaseStatement):
         return "({0})".format(" and ".join([ repr(item) for item in self.items ]))
 
 class OrStatement(BaseStatement):
+    @property
+    def as_mongo(self):
+        return {"$or": [ item.as_mongo for item in self.items ]}
+
     def __init__(self, string, loc, tokens):
         self.items = tokens[0][0::2]
 

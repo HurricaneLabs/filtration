@@ -15,6 +15,8 @@ as_mongo_tests = [
     ("symbol1 =~ /pattern/", {"symbol1": {"$regex": "/pattern/"}}),
     ("symbol1 in 1,2", {"symbol1": {"$in": [1,2]}}),
     ("symbol1 in 127.0.0.1/32", {"symbol1": {"$in": ["127.0.0.1"]}}),
+    ("symbol1 and symbol2", {"$and": [{"symbol1": {"$exists": True}}, {"symbol2": {"$exists": True}}]}),
+    ("symbol1 or symbol2", {"$or": [{"symbol1": {"$exists": True}}, {"symbol2": {"$exists": True}}]}),
 ]
 
 qs_as_mongo_tests = [
