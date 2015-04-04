@@ -13,6 +13,10 @@ class FiltrationBase:
     def parseString(cls, *args, **kwargs):
         return cls.token.parseString(*args, **kwargs)[0]
 
+    @classmethod
+    def build(cls, *tokens):
+        return cls("", 0, tokens)
+
 class BaseToken(FiltrationBase):
     compile_error = "Error parsing: {0}"
 
@@ -196,6 +200,12 @@ class Expression(FiltrationBase):
         from .parser import parseQsChunk
         return cls.parseString(" and ".join([parseQsChunk(_) for _ in qs.split("&")]))
 
+    @classmethod
+    def buildSimpleExpression(cls, lhs, op, rhs):
+        lhs = Symbol.build(lhs)
+        rhs = Value.build(rhs)
+        return cls.build(Statement.build(lhs, op, rhs))
+
     def __init__(self, string, loc, tokens):
         self.lhs = tokens[0]
 
@@ -206,7 +216,9 @@ class Expression(FiltrationBase):
         return repr(self.lhs)
 
 class BaseStatement:
-    pass
+    @classmethod
+    def build(cls, *tokens):
+        return cls("", 0, tokens)
 
 class NotStatement(BaseStatement):
     @property
