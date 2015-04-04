@@ -52,9 +52,12 @@ def parseOr(*args, **kwargs):
     return OrStatement(*args, **kwargs)
 
 def parseQsChunk(chunk):
-    chunk = chunk.lower()
+    import urllib.parse
 
     (qs_lhs, qs_rhs) = chunk.split("=", 1)
+
+    qs_lhs = urllib.parse.unquote(qs_lhs)
+    qs_rhs = urllib.parse.unquote(qs_rhs)
 
     qs_lhs_parts = qs_lhs.split("__")
     qs_op = qs_lhs_parts.pop(-1)
