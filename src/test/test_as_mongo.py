@@ -17,6 +17,7 @@ as_mongo_tests = [
     ("symbol1 in 1,2", {"symbol1": {"$in": [1,2]}}),
     ("symbol1 in 127.0.0.1/32", {"symbol1": {"$in": ["127.0.0.1"]}}),
     ("symbol1 > 2014-01-01", {"symbol1": {"$gt": datetime.datetime(2014, 1, 1, 0, 0)}}),
+    ("symbol1 > 12:00:00", {"symbol1": {"$gt": datetime.datetime.combine(datetime.date.today(), datetime.time(12, 0, 0))}}),
     ("not symbol1", {"$not": {"symbol1": {"$exists": True}}}),
     ("symbol1 and symbol2", {"$and": [{"symbol1": {"$exists": True}}, {"symbol2": {"$exists": True}}]}),
     ("symbol1 or symbol2", {"$or": [{"symbol1": {"$exists": True}}, {"symbol2": {"$exists": True}}]}),
