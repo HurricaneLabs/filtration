@@ -1,5 +1,5 @@
 [run]
-omit = src/test/*
+omit = src/test/*,setup.py
 
 [paths]
 source = src/
