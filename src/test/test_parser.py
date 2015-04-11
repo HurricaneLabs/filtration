@@ -2,32 +2,30 @@ import unittest
 
 from nose2.tools import params
 from pyparsing import ParseException
+import fauxfactory
 
 
 symbol_tests = [
-    "symbol",
-    "_symbol",
-    "symbol.symbol",
-    "_symbol.symbol",
-    ("'value'", ParseException),
-    ('"value"', ParseException),
-    ("123", ParseException),
+    fauxfactory.gen_alpha(),
+    "_{0}".format(fauxfactory.gen_alpha()),
+    "{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()),
+    "_{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()),
+    ("'{0}'".format(fauxfactory.gen_alpha()), ParseException),
+    ('"{0}"'.format(fauxfactory.gen_alpha()), ParseException),
+    (fauxfactory.gen_numeric_string(), ParseException),
 ]
 
 value_tests = [
-    "'value'",
-    '"value"',
-    "123",
-    "1979-12-01",
-    "2010-03-15",
-    "00:01:02",
-    "14:17:00",
-    "1979-12-01T00:01:02",
-    "2010-03-15 14:17:00",
-    ("symbol", ParseException),
-    ("_symbol", ParseException),
-    ("symbol.symbol", ParseException),
-    ("_symbol.symbol", ParseException),
+    "'{0}'".format(fauxfactory.gen_alpha()),
+    '"{0}"'.format(fauxfactory.gen_alpha()),
+    fauxfactory.gen_numeric_string(),
+    fauxfactory.gen_date().isoformat(),
+    fauxfactory.gen_time().isoformat(),
+    fauxfactory.gen_datetime().isoformat(),
+    (fauxfactory.gen_alpha(), ParseException),
+    ("_{0}".format(fauxfactory.gen_alpha()), ParseException),
+    ("{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()), ParseException),
+    ("_{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()), ParseException),
 ]
 
 regex_tests = [
