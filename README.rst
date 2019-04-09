@@ -1,14 +1,13 @@
 ##########
 Filtration
 ##########
+
 **A library for parsing arbitrary filters provided by a UI or as a Query String**
 
 Features
 ========
 - Compatible with Python 3
 - Parses human readable filters
-- Parses a simple query string syntax
-- Compiles directly to PyMongo queries
 
 Get Filtration
 ==============
@@ -171,56 +170,4 @@ This expression will return true:
     >>> expr = Expression.parseString("a.b.c == 1")
     >>> expr(c)
     True
-    >>>
-
-Query Strings
-=============
-
-Syntax
-~~~~~~
-
-The query string parser is used to provide a simple but standard way of intepreting a query string
-as a pymongo query. Currently, only AND'ing of individual statements is supported. The basic
-operators are 'eq', 'ne', 'lt', 'le', 'gt', and 'ge', which correspond to '==', '!=', '<', '<=',
-'>' and '>=' respectively. Additionally, there are several operators that compile to regular
-expressions: 'contains', 'startswith' and 'endswith', as well as case insensitive versions of each,
-'icontains', 'istartswith' and 'iendswith'.
-
-Query string statements are of the following format::
-
-    lhs__op=rhs
-
-Query string expressions are formed by joining multiple statements together using "&" as the
-separator, as a standard URL query string.
-
-Usage
-~~~~~
-
-.. code-block:: python
-
-    >>> from filtration import Expression
-    >>> Expression.parseQsString("title__eq=A%20Tale%20of%20Two%20Cities")
-    title == 'A Tale of Two Cities'
-    >>> Expression.parseQsString("author__name__eq=John%20Doe")
-    author.name == 'John Doe'
-    >>> Expression.parseQsString("author__istartswith=john")
-    author =~ /^john/i
-    >>>
-
-
-Mongo Compilation
-=================
-
-Expression objects compile direct to pymongo queries. This allows you to accept a query in a
-user friendly format, and easily convert it into a query for use with pymongo. Every Expression
-object has an "as_mongo" property that returns the mongo equivalent of the Expression.
-
-.. code-block:: python
-
-    >>> Expression.parseString("author.name == 'John Doe'").as_mongo
-    {'author.name': 'John Doe'}
-    >>> Expression.parseString("author.name =~ /^John/").as_mongo
-    {'author.name': {'$regex': '/^John/'}}
-    >>> Expression.parseQsString("author__istartswith=john").as_mongo
-    {'author': {'$regex': '/^john/i'}}
     >>>

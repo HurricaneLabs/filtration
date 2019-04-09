@@ -1,20 +1,30 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-version = "1.0.0"
 
-long_description = """
-`Github <https://github.com/HurricaneLabs/filtration>`_
--------------------------------------------------------
-"""
+VERSION = "2.0.0"
+
+
+with open("README.rst", "r") as f:
+    long_description = f.read()
+
 
 setup(
-    name = "filtration",
-    version = version,
-    description = "A collection of python logging extensions",
-    long_description = long_description,
-    url = "https://github.com/HurricaneLabs/filtration",
-    author = "Steve McMaster",
-    author_email = "mcmaster@hurricanelabs.com",
-    package_dir = {"":"src"},
-    packages = find_packages("src"),
+    name="filtration",
+    version=VERSION,
+    author="Steve McMaster",
+    author_email="mcmaster@hurricanelabs.com",
+    packages=["filtration"],
+    description="filtration - A library for parsing arbitrary filters",
+    long_description=long_description,
+    install_requires=[
+        "pyparsing",
+        "ipcalc"
+    ],
+    classifiers=[
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
+        "Development Status :: 5 - Production/Stable",
+    ],
+    bugtrack_url="https://github.com/HurricaneLabs/filtration/issues",
 )

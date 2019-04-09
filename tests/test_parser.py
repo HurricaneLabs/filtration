@@ -89,7 +89,7 @@ class TestGrammar(unittest.TestCase):
             A symbol begins with a letter or an underscore, and may contain any combination of
             letters, numbers, dot (".") and underscore ("_")
         """
-        from filtration.grammar import Symbol
+        from filtration import Symbol
 
         if expect_failure is None:
             Symbol.parseString(test_expr)
@@ -101,7 +101,7 @@ class TestGrammar(unittest.TestCase):
         """
             A value is a quoted string, with single or double quotes, or a number.
         """
-        from filtration.grammar import Value
+        from filtration import Value
 
         if expect_failure is None:
             Value.parseString(test_expr)
@@ -113,7 +113,7 @@ class TestGrammar(unittest.TestCase):
         """
             A regex is a string surrounded by /
         """
-        from filtration.grammar import Regex
+        from filtration import Regex
 
         if expect_failure is None:
             Regex.parseString(test_expr)
@@ -125,7 +125,7 @@ class TestGrammar(unittest.TestCase):
         """
             Subnets are defined in CIDR notation
         """
-        from filtration.grammar import Subnet
+        from filtration import Subnet
 
         if expect_failure is None:
             Subnet.parseString(test_expr)
@@ -137,7 +137,7 @@ class TestGrammar(unittest.TestCase):
         """
             A list is two or more values, separated by commas
         """
-        from filtration.grammar import List
+        from filtration import List
 
         test_expr = ",".join(["'value'" for _ in range(0, test_expr_len)])
         if test_expr_len > 1:
@@ -146,17 +146,17 @@ class TestGrammar(unittest.TestCase):
             self.assertRaises(ParseException, List.parseString, test_expr)
 
     @params(*term_parse_tests)
-    def test_parse_expression(self, test_expr, expect_failure=None):
+    def test_parse_statement(self, test_expr, expect_failure=None):
         """
         """
-        from filtration.grammar import Statement
+        from filtration import Statement
 
         Statement.parseString(test_expr)
 
     @params(*generate_expression_tests())
-    def test_parse_filter(self, test_expr):
+    def test_parse_expression(self, test_expr):
         """
         """
-        from filtration.grammar import Expression
+        from filtration import Expression
 
         Expression.parseString(test_expr)

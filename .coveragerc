@@ -1,5 +1,7 @@
 [run]
-omit = src/test/*,setup.py
+# branch = true
+source = filtration
 
-[paths]
-source = src/
+[report]
+include = filtration/*
+show_missing = true
