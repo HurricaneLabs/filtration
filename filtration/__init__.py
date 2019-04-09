@@ -111,7 +111,7 @@ class _List(Token):
 List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).setParseAction(_List)
 
 in_op = lambda lhs, rhs: operator.contains(rhs, lhs)
-re_op = lambda lhs, rhs: lhs and rhs and bool(rhs.search(lhs))
+re_op = lambda lhs, rhs: bool(rhs.search(lhs)) if lhs and rhs else False
 
 # Operators
 ComparisonOp = MatchFirst([
