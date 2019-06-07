@@ -25,6 +25,7 @@ expression_evaluate_tests = [
     ("symbol_int > 0", "symbol_int > 1"),
     ("symbol_int >= 1", "symbol_int >= 2"),
     ("symbol_str in 'a','b'", "symbol_str in 'c','d'"),
+    (None, "'a' in nonexistant"),
     ("symbol_str =~ /^a/", "symbol_str =~ /c$/"),
     (None, "nonexistant =~ /a/"),
     ("symbol_dt > 2015-03-01", "symbol_dt < 2000-01-01"),

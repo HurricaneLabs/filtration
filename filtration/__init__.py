@@ -20,7 +20,7 @@ class Token:
         else:
             try:
                 self.value = toks[0]
-            except TypeError:
+            except TypeError:  # pragma: no cover
                 self.value = toks
 
     def __call__(self, ctx):
@@ -110,7 +110,7 @@ class _List(Token):
 
 List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).setParseAction(_List)
 
-in_op = lambda lhs, rhs: operator.contains(rhs, lhs)
+in_op = lambda lhs, rhs: operator.contains(rhs, lhs) if lhs and rhs else False
 re_op = lambda lhs, rhs: bool(rhs.search(lhs)) if lhs and rhs else False
 
 # Operators
