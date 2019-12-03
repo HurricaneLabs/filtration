@@ -27,6 +27,7 @@ expression_evaluate_tests = [
     ("symbol_str in 'a','b'", "symbol_str in 'c','d'"),
     (None, "'a' in nonexistant"),
     ("symbol_str =~ /^a/", "symbol_str =~ /c$/"),
+    ("symbol_list =~ /cde/", "symbol_list =~ /xyz/"),
     (None, "nonexistant =~ /a/"),
     ("symbol_dt > 2015-03-01", "symbol_dt < 2000-01-01"),
 ]
@@ -56,7 +57,10 @@ class TestTokens(unittest.TestCase):
         from filtration import Regex
 
         rex = Regex.parseString(test_expr)[0]
-        self.assertEqual(rex({}), expected)
+        result = rex({})
+
+        self.assertEqual(result.pattern, expected.pattern)
+        self.assertEqual(result.flags, expected.flags)
 
     def test_evaluate_subnet(self):
         """
@@ -80,6 +84,7 @@ class TestTokens(unittest.TestCase):
             "symbol_int": 1,
             "symbol_str": "a",
             "symbol_dt": datetime.datetime.now(),
+            "symbol_list": ["abcde", "cdefg"]
         }
         context["dict"] = context
 

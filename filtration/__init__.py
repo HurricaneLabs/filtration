@@ -110,8 +110,23 @@ class _List(Token):
 
 List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).setParseAction(_List)
 
-in_op = lambda lhs, rhs: operator.contains(rhs, lhs) if lhs and rhs else False
-re_op = lambda lhs, rhs: bool(rhs.search(lhs)) if lhs and rhs else False
+
+def in_op(lhs, rhs):
+    if not (lhs and rhs):
+        return False
+
+    return operator.contains(rhs, lhs)
+
+
+def re_op(lhs, rhs):
+    if not (lhs and rhs):
+        return False
+
+    if isinstance(lhs, list):
+        return any([rhs.search(item) for item in lhs])
+
+    return bool(rhs.search(lhs))
+
 
 # Operators
 ComparisonOp = MatchFirst([
@@ -159,7 +174,7 @@ BooleanOps = [
     (CaselessLiteral("or"), 2, opAssoc.LEFT, _Or),
 ]
 
-LHS = Symbol | Value
+LHS = Symbol | Value | Regex
 RHS = Symbol | Subnet | List | Value | Regex
 
 
