@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-VERSION = "2.1.1"
+VERSION = "2.2.0"
 
 
 with open("README.rst", "r") as f:
@@ -22,7 +22,6 @@ setup(
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Development Status :: 5 - Production/Stable",
     ],
