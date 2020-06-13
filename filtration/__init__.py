@@ -115,7 +115,10 @@ def in_op(lhs, rhs):
     if not (lhs and rhs):
         return False
 
-    return operator.contains(rhs, lhs)
+    try:
+        return operator.contains(rhs, lhs)
+    except ValueError:
+        return False
 
 
 def re_op(lhs, rhs):

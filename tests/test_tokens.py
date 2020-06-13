@@ -95,3 +95,12 @@ class TestTokens(unittest.TestCase):
         if test_expr_false:
             expr = Expression.parseString(test_expr_false)
             self.assertFalse(expr(context))
+
+    def test_subnet_contains(self):
+        """
+        """
+        from filtration import Expression
+
+        expr = Expression.parseString("src in 127.0.0.0/8")
+        self.assertTrue(expr({"src": "127.0.0.1"}))
+        self.assertFalse(expr({"src": "localhost"}))
