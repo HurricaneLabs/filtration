@@ -1,5 +1,3 @@
-# pylint: disable=invalid-name
-
 import datetime
 import operator
 import re
@@ -8,8 +6,8 @@ from functools import reduce
 import ipcalc
 from pyparsing import alphas, nums
 from pyparsing import CaselessLiteral, Combine, Group, Keyword, Literal, MatchFirst, OneOrMore
-from pyparsing import opAssoc, operatorPrecedence, Optional, ParseException, quotedString
-from pyparsing import QuotedString, removeQuotes, Suppress, Word, ZeroOrMore
+from pyparsing import infix_notation, OpAssoc, Optional, ParseException, quoted_string
+from pyparsing import QuotedString, remove_quotes, Suppress, Word, ZeroOrMore
 
 
 class Token:
@@ -28,21 +26,21 @@ class Token:
         return self.value
 
 
-Year = Word(nums, max=4).setParseAction(lambda toks: int(toks[0]))
-Month = Word(nums, max=2).setParseAction(lambda toks: int(toks[0]))
-Day = Word(nums, max=2).setParseAction(lambda toks: int(toks[0]))
+Year = Word(nums, max=4).set_parse_action(lambda toks: int(toks[0]))
+Month = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
+Day = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
-Hour = Word(nums, max=2).setParseAction(lambda toks: int(toks[0]))
-Minute = Word(nums, max=2).setParseAction(lambda toks: int(toks[0]))
-Second = Word(nums, max=2).setParseAction(lambda toks: int(toks[0]))
+Hour = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
+Minute = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
+Second = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
-Date = (Year + Suppress("-") + Month + Suppress("-") + Day).setParseAction(
+Date = (Year + Suppress("-") + Month + Suppress("-") + Day).set_parse_action(
     lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
 )
-Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).setParseAction(
+Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).set_parse_action(
     lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
 )
-DateTime = (Date + Suppress(Optional("T")) + Time).setParseAction(
+DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
     lambda toks: datetime.datetime.combine(toks[0].date(), toks[1].time())
 )
 
@@ -52,17 +50,17 @@ class _Regex(Token):
         # pylint: disable=no-self-use
         try:
             return re.compile(pattern, flags)
-        except re.error as e:
-            raise ParseException(str(e))
+        except re.error as exc:
+            raise ParseException(str(exc)) from exc
 
 
-RegexFlag = Word("ims", exact=1).setParseAction(
+RegexFlag = Word("ims", exact=1).set_parse_action(
     lambda toks: getattr(re, toks[0].upper())
 )
-RegexFlags = ZeroOrMore(RegexFlag).setParseAction(
+RegexFlags = ZeroOrMore(RegexFlag).set_parse_action(
     lambda toks: reduce(lambda a, b: a | b, toks, 0)
 )
-Regex = (QuotedString("/") + RegexFlags).setParseAction(_Regex)
+Regex = (QuotedString("/") + RegexFlags).set_parse_action(_Regex)
 
 Octet = Word(nums, max=3).addCondition(lambda toks: int(toks[0]) <= 255)
 IpAddr = Combine(Octet + "." + Octet + "." + Octet + "." + Octet)
@@ -75,7 +73,7 @@ class _Subnet(Token):
         return ipcalc.Network(subnet)
 
 
-Subnet = Combine(IpAddr + "/" + Cidr).setParseAction(_Subnet)
+Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_Subnet)
 
 
 class _Symbol(Token):
@@ -91,16 +89,16 @@ class _Symbol(Token):
         return value
 
 
-Symbol = Word((alphas + "_"), bodyChars=(alphas + nums + "." + "_")).setParseAction(_Symbol)
+Symbol = Word((alphas + "_"), bodyChars=(alphas + nums + "." + "_")).set_parse_action(_Symbol)
 
 
 Value = MatchFirst([
     DateTime,
     Date,
     Time,
-    quotedString.setParseAction(removeQuotes),
-    Word(nums).setParseAction(lambda toks: int(toks[0])),
-]).setParseAction(Token)
+    quoted_string.set_parse_action(remove_quotes),
+    Word(nums).set_parse_action(lambda toks: int(toks[0])),
+]).set_parse_action(Token)
 
 
 class _List(Token):
@@ -108,7 +106,7 @@ class _List(Token):
         return [item(ctx) for item in self.value]
 
 
-List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).setParseAction(_List)
+List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).set_parse_action(_List)
 
 
 def in_op(lhs, rhs):
@@ -126,21 +124,21 @@ def re_op(lhs, rhs):
         return False
 
     if isinstance(lhs, list):
-        return any([rhs.search(item) for item in lhs])
+        return any(rhs.search(item) for item in lhs)
 
     return bool(rhs.search(lhs))
 
 
 # Operators
 ComparisonOp = MatchFirst([
-    Literal("==").setParseAction(lambda toks: operator.eq),
-    Literal("!=").setParseAction(lambda toks: operator.ne),
-    Literal("<=").setParseAction(lambda toks: operator.le),
-    Literal("<").setParseAction(lambda toks: operator.lt),
-    Literal(">=").setParseAction(lambda toks: operator.ge),
-    Literal(">").setParseAction(lambda toks: operator.gt),
-    Keyword("in").setParseAction(lambda toks: in_op),
-    Literal("=~").setParseAction(lambda toks: re_op),
+    Literal("==").set_parse_action(lambda toks: operator.eq),
+    Literal("!=").set_parse_action(lambda toks: operator.ne),
+    Literal("<=").set_parse_action(lambda toks: operator.le),
+    Literal("<").set_parse_action(lambda toks: operator.lt),
+    Literal(">=").set_parse_action(lambda toks: operator.ge),
+    Literal(">").set_parse_action(lambda toks: operator.gt),
+    Keyword("in").set_parse_action(lambda toks: in_op),
+    Literal("=~").set_parse_action(lambda toks: re_op),
 ])
 
 
@@ -159,7 +157,7 @@ class _And(Token):
         return toks[0][0::2]
 
     def __call__(self, ctx):
-        return all([item(ctx) for item in self.value])
+        return all(item(ctx) for item in self.value)
 
 
 class _Or(Token):
@@ -168,13 +166,13 @@ class _Or(Token):
         return toks[0][0::2]
 
     def __call__(self, ctx):
-        return any([item(ctx) for item in self.value])
+        return any(item(ctx) for item in self.value)
 
 
 BooleanOps = [
-    (CaselessLiteral("not"), 1, opAssoc.RIGHT, _Not),
-    (CaselessLiteral("and"), 2, opAssoc.LEFT, _And),
-    (CaselessLiteral("or"), 2, opAssoc.LEFT, _Or),
+    (CaselessLiteral("not"), 1, OpAssoc.RIGHT, _Not),
+    (CaselessLiteral("and"), 2, OpAssoc.LEFT, _And),
+    (CaselessLiteral("or"), 2, OpAssoc.LEFT, _Or),
 ]
 
 LHS = Symbol | Value | Regex
@@ -184,7 +182,7 @@ RHS = Symbol | Subnet | List | Value | Regex
 class _Statement:
     def __init__(self, lhs, op=None, rhs=None):
         self.lhs = lhs
-        self.op = op
+        self.op = op  # pylint: disable=invalid-name
         self.rhs = rhs
 
     def __call__(self, ctx):
@@ -194,16 +192,18 @@ class _Statement:
         return self.op(self.lhs(ctx), self.rhs(ctx))
 
 
-Statement = (LHS + Optional(ComparisonOp + RHS)).setParseAction(
+Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(
     lambda toks: _Statement(*toks)
 )
 
 
 class Expression:
     @classmethod
-    def parseString(cls, *args, **kwargs):
-        expr = operatorPrecedence(Statement, BooleanOps).setParseAction(
+    def parse_string(cls, *args, **kwargs):
+        expr = infix_notation(Statement, BooleanOps).set_parse_action(
             lambda toks: _Statement(*toks)
         )
 
-        return expr.parseString(*args, **kwargs)[0]
+        return expr.parse_string(*args, **kwargs)[0]
+
+    parseString = parse_string

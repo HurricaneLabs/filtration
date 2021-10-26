@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 
 with open("README.rst", "r") as f:
@@ -17,7 +17,7 @@ setup(
     description="filtration - A library for parsing arbitrary filters",
     long_description=long_description,
     install_requires=[
-        "pyparsing<3.0.0",
+        "pyparsing>=3.0.0",
         "ipcalc"
     ],
     classifiers=[
@@ -25,5 +25,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Development Status :: 5 - Production/Stable",
     ],
-    bugtrack_url="https://github.com/HurricaneLabs/filtration/issues",
+    project_urls={
+        "Bug Tracker": "https://github.com/HurricaneLabs/filtration/issues"
+    }
 )
