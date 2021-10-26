@@ -17,7 +17,7 @@ setup(
     description="filtration - A library for parsing arbitrary filters",
     long_description=long_description,
     install_requires=[
-        "pyparsing",
+        "pyparsing<3.0.0",
         "ipcalc"
     ],
     classifiers=[
