@@ -114,6 +114,10 @@ def in_op(lhs, rhs):
         return False
 
     try:
+        # If lhs is a list, we need to call ipcalc's contains() function for each item
+        if isinstance(lhs, list) and isinstance(rhs, ipcalc.Network):
+            return any([operator.contains(rhs, list_item) for list_item in lhs])
+
         return operator.contains(rhs, lhs)
     except ValueError:
         return False
