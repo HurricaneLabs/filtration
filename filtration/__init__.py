@@ -78,6 +78,11 @@ Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_Subnet)
 
 class _Symbol(Token):
     def __call__(self, ctx):
+        # If symbol is a literal 'a.b' and exists in ctx, return it
+        # Imperfect bugfix to allow for fields with literal dots in the root of ctx
+        if self.value in ctx:
+            return ctx[self.value]
+
         parts = self.value.split(".")
         value = ctx
         for part in parts:
