@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "filtration"
+version = "2.3.2"
+description = "filtration - A library for parsing arbitrary filters"
+readme = "README.rst"
+license = "MIT"
+authors = [{ name = "Steve McMaster", email = "mcmaster@hurricanelabs.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    # 3.0.0 can't parse subnets; 3.0.1 fixed it
+    "pyparsing>=3.0.1",
+    "ipcalc",
+    # ipcalc imports six without declaring it
+    "six",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/HurricaneLabs/filtration/issues"
+
+[tool.setuptools]
+packages = ["filtration"]
