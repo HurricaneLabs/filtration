@@ -55,20 +55,20 @@ def context() -> dict[str, Any]:
 
 def test_evaluate_symbol() -> None:
     """A symbol evaluates to its value in the context."""
-    sym = Symbol.parse_string("symbol")[0]
+    sym = Symbol.parse_string("symbol", parse_all=True)[0]
     assert sym({"symbol": "value"}) == "value"
 
 
 def test_evaluate_value() -> None:
     """A quoted value evaluates to the string without quotes."""
-    val = Value.parse_string("'value'")[0]
+    val = Value.parse_string("'value'", parse_all=True)[0]
     assert val({}) == "value"
 
 
 @pytest.mark.parametrize(("expr", "expected"), REGEX_EVALUATE)
 def test_evaluate_regex(expr: str, expected: re.Pattern) -> None:
     """A regex evaluates to a compiled pattern with the flags given."""
-    rex = Regex.parse_string(expr)[0]
+    rex = Regex.parse_string(expr, parse_all=True)[0]
     result = rex({})
     assert result.pattern == expected.pattern
     assert result.flags == expected.flags
@@ -76,7 +76,7 @@ def test_evaluate_regex(expr: str, expected: re.Pattern) -> None:
 
 def test_evaluate_subnet() -> None:
     """A subnet evaluates to a network object."""
-    subnet = Subnet.parse_string("192.168.0.0/16")[0]
+    subnet = Subnet.parse_string("192.168.0.0/16", parse_all=True)[0]
     assert subnet({}).network() == "192.168.0.0"
     assert subnet({}).size() == 2**16
 
@@ -87,12 +87,12 @@ def test_evaluate_expression(
 ) -> None:
     """Each operator gives the expected result against the context."""
     if expr_true:
-        assert Expression.parse_string(expr_true)(context)
-    assert not Expression.parse_string(expr_false)(context)
+        assert Expression.parse_string(expr_true, parse_all=True)(context)
+    assert not Expression.parse_string(expr_false, parse_all=True)(context)
 
 
 def test_subnet_contains() -> None:
     """`in` a subnet matches IPs inside it and rejects non-IPs."""
-    expr = Expression.parse_string("src in 127.0.0.0/8")
+    expr = Expression.parse_string("src in 127.0.0.0/8", parse_all=True)
     assert expr({"src": "127.0.0.1"})
     assert not expr({"src": "localhost"})
