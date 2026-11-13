@@ -4,10 +4,27 @@ import re
 from functools import reduce
 
 import ipcalc
-from pyparsing import alphas, nums
-from pyparsing import CaselessLiteral, Combine, Group, Keyword, Literal, MatchFirst, OneOrMore
-from pyparsing import infix_notation, OpAssoc, Optional, ParseException, quoted_string
-from pyparsing import QuotedString, remove_quotes, Suppress, Word, ZeroOrMore
+from pyparsing import (
+    CaselessLiteral,
+    Combine,
+    Group,
+    Keyword,
+    Literal,
+    MatchFirst,
+    OneOrMore,
+    OpAssoc,
+    Optional,
+    ParseException,
+    QuotedString,
+    Suppress,
+    Word,
+    ZeroOrMore,
+    alphas,
+    infix_notation,
+    nums,
+    quoted_string,
+    remove_quotes,
+)
 
 
 class Token:
@@ -52,9 +69,7 @@ class _Regex(Token):
             raise ParseException(str(exc)) from exc
 
 
-RegexFlag = Word("ims", exact=1).set_parse_action(
-    lambda toks: getattr(re, toks[0].upper())
-)
+RegexFlag = Word("ims", exact=1).set_parse_action(lambda toks: getattr(re, toks[0].upper()))
 RegexFlags = ZeroOrMore(RegexFlag).set_parse_action(
     lambda toks: reduce(lambda a, b: a | b, toks, 0)
 )
@@ -94,13 +109,15 @@ class _Symbol(Token):
 Symbol = Word((alphas + "_"), body_chars=(alphas + nums + "." + "_")).set_parse_action(_Symbol)
 
 
-Value = MatchFirst([
-    DateTime,
-    Date,
-    Time,
-    quoted_string.set_parse_action(remove_quotes),
-    Word(nums).set_parse_action(lambda toks: int(toks[0])),
-]).set_parse_action(Token)
+Value = MatchFirst(
+    [
+        DateTime,
+        Date,
+        Time,
+        quoted_string.set_parse_action(remove_quotes),
+        Word(nums).set_parse_action(lambda toks: int(toks[0])),
+    ]
+).set_parse_action(Token)
 
 
 class _List(Token):
@@ -136,16 +153,18 @@ def re_op(lhs, rhs):
 
 
 # Operators
-ComparisonOp = MatchFirst([
-    Literal("==").set_parse_action(lambda toks: operator.eq),
-    Literal("!=").set_parse_action(lambda toks: operator.ne),
-    Literal("<=").set_parse_action(lambda toks: operator.le),
-    Literal("<").set_parse_action(lambda toks: operator.lt),
-    Literal(">=").set_parse_action(lambda toks: operator.ge),
-    Literal(">").set_parse_action(lambda toks: operator.gt),
-    Keyword("in").set_parse_action(lambda toks: in_op),
-    Literal("=~").set_parse_action(lambda toks: re_op),
-])
+ComparisonOp = MatchFirst(
+    [
+        Literal("==").set_parse_action(lambda toks: operator.eq),
+        Literal("!=").set_parse_action(lambda toks: operator.ne),
+        Literal("<=").set_parse_action(lambda toks: operator.le),
+        Literal("<").set_parse_action(lambda toks: operator.lt),
+        Literal(">=").set_parse_action(lambda toks: operator.ge),
+        Literal(">").set_parse_action(lambda toks: operator.gt),
+        Keyword("in").set_parse_action(lambda toks: in_op),
+        Literal("=~").set_parse_action(lambda toks: re_op),
+    ]
+)
 
 
 class _Not(Token):
@@ -195,9 +214,7 @@ class _Statement:
         return self.op(self.lhs(ctx), self.rhs(ctx))
 
 
-Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(
-    lambda toks: _Statement(*toks)
-)
+Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(lambda toks: _Statement(*toks))
 
 
 class Expression:
