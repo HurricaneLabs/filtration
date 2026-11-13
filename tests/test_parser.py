@@ -57,7 +57,7 @@ EXPRESSION_FORMATS = [
 @pytest.mark.parametrize("expr", SYMBOLS)
 def test_parse_symbol(expr: str) -> None:
     """A symbol starts with a letter or underscore, then letters, digits, dots or underscores."""
-    Symbol.parse_string(expr)
+    Symbol.parse_string(expr, parse_all=True)
 
 
 @pytest.mark.parametrize("expr", NOT_SYMBOLS)
@@ -70,7 +70,7 @@ def test_parse_symbol_rejects(expr: str) -> None:
 @pytest.mark.parametrize("expr", VALUES)
 def test_parse_value(expr: str) -> None:
     """A value is a quoted string, a number, a date, a time or a date/time."""
-    Value.parse_string(expr)
+    Value.parse_string(expr, parse_all=True)
 
 
 @pytest.mark.parametrize("expr", NOT_VALUES)
@@ -83,7 +83,7 @@ def test_parse_value_rejects(expr: str) -> None:
 @pytest.mark.parametrize("expr", REGEXES)
 def test_parse_regex(expr: str) -> None:
     """A regex is wrapped in / with optional i, m or s flags after it."""
-    Regex.parse_string(expr)
+    Regex.parse_string(expr, parse_all=True)
 
 
 @pytest.mark.parametrize("expr", NOT_REGEXES)
@@ -96,7 +96,7 @@ def test_parse_regex_rejects(expr: str) -> None:
 @pytest.mark.parametrize("expr", SUBNETS)
 def test_parse_subnet(expr: str) -> None:
     """Subnets are IPv4 CIDR notation."""
-    Subnet.parse_string(expr)
+    Subnet.parse_string(expr, parse_all=True)
 
 
 @pytest.mark.parametrize("expr", NOT_SUBNETS)
@@ -109,7 +109,7 @@ def test_parse_subnet_rejects(expr: str) -> None:
 @pytest.mark.parametrize("length", range(2, 10))
 def test_parse_valuelist(length: int) -> None:
     """A list is two or more values separated by commas."""
-    List.parse_string(",".join(["'value'"] * length))
+    List.parse_string(",".join(["'value'"] * length), parse_all=True)
 
 
 def test_parse_valuelist_rejects_single_value() -> None:
@@ -121,14 +121,14 @@ def test_parse_valuelist_rejects_single_value() -> None:
 @pytest.mark.parametrize("expr", TERMS)
 def test_parse_statement(expr: str) -> None:
     """Each statement form parses."""
-    Statement.parse_string(expr)
+    Statement.parse_string(expr, parse_all=True)
 
 
 @pytest.mark.parametrize("term", TERMS)
 @pytest.mark.parametrize("fmt", EXPRESSION_FORMATS)
 def test_parse_expression(fmt: str, term: str) -> None:
     """Statements combine with not, and, or and parentheses."""
-    Expression.parse_string(fmt.format(term))
+    Expression.parse_string(fmt.format(term), parse_all=True)
 
 
 def test_parse_string_camelcase_alias() -> None:
