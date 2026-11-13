@@ -39,6 +39,8 @@ packages = ["filtration"]
 dev = [
     "pytest>=8",
     "pytest-cov>=5",
+    # pinned so new ruff releases can't fail CI without a code change
+    "ruff==0.17.5",
 ]
 
 [tool.pytest.ini_options]
@@ -52,3 +54,9 @@ source = ["filtration"]
 
 [tool.coverage.report]
 show_missing = true
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP"]

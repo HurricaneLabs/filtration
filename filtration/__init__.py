@@ -14,7 +14,7 @@ class Token:
     def __init__(self, toks):
         compiler = getattr(self, "compiler", None)
         if callable(compiler):
-            self.value = compiler(*toks)  # pylint: disable=not-callable
+            self.value = compiler(*toks)
         else:
             try:
                 self.value = toks[0]
@@ -22,7 +22,6 @@ class Token:
                 self.value = toks
 
     def __call__(self, ctx):
-        # pylint: disable=unused-argument
         return self.value
 
 
@@ -47,7 +46,6 @@ DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
 
 class _Regex(Token):
     def compiler(self, pattern, flags):
-        # pylint: disable=no-self-use
         try:
             return re.compile(pattern, flags)
         except re.error as exc:
@@ -69,7 +67,6 @@ Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 
 class _Subnet(Token):
     def compiler(self, subnet):
-        # pylint: disable=no-self-use
         return ipcalc.Network(subnet)
 
 
@@ -153,7 +150,6 @@ ComparisonOp = MatchFirst([
 
 class _Not(Token):
     def compiler(self, *toks):
-        # pylint: disable=no-self-use
         return toks[0][1]
 
     def __call__(self, ctx):
@@ -162,7 +158,6 @@ class _Not(Token):
 
 class _And(Token):
     def compiler(self, *toks):
-        # pylint: disable=no-self-use
         return toks[0][0::2]
 
     def __call__(self, ctx):
@@ -171,7 +166,6 @@ class _And(Token):
 
 class _Or(Token):
     def compiler(self, *toks):
-        # pylint: disable=no-self-use
         return toks[0][0::2]
 
     def __call__(self, ctx):
@@ -191,7 +185,7 @@ RHS = Symbol | Subnet | List | Value | Regex
 class _Statement:
     def __init__(self, lhs, op=None, rhs=None):
         self.lhs = lhs
-        self.op = op  # pylint: disable=invalid-name
+        self.op = op
         self.rhs = rhs
 
     def __call__(self, ctx):
