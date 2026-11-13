@@ -18,7 +18,9 @@ setup(
     long_description=long_description,
     install_requires=[
         "pyparsing>=3.0.0",
-        "ipcalc"
+        "ipcalc",
+        # ipcalc imports six without declaring it
+        "six",
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
