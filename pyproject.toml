@@ -59,4 +59,8 @@ show_missing = true
 line-length = 99
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "B", "UP"]
+select = ["E", "W", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+# bandit only ever scanned filtration/; tests are full of asserts
+"tests/*" = ["S"]
