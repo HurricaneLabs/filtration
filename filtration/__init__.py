@@ -4,17 +4,34 @@ import re
 from functools import reduce
 
 import ipcalc
-from pyparsing import alphas, nums
-from pyparsing import CaselessLiteral, Combine, Group, Keyword, Literal, MatchFirst, OneOrMore
-from pyparsing import infix_notation, OpAssoc, Optional, ParseException, quoted_string
-from pyparsing import QuotedString, remove_quotes, Suppress, Word, ZeroOrMore
+from pyparsing import (
+    CaselessLiteral,
+    Combine,
+    Group,
+    Keyword,
+    Literal,
+    MatchFirst,
+    OneOrMore,
+    OpAssoc,
+    Optional,
+    ParseException,
+    QuotedString,
+    Suppress,
+    Word,
+    ZeroOrMore,
+    alphas,
+    infix_notation,
+    nums,
+    quoted_string,
+    remove_quotes,
+)
 
 
 class Token:
     def __init__(self, toks):
         compiler = getattr(self, "compiler", None)
         if callable(compiler):
-            self.value = compiler(*toks)  # pylint: disable=not-callable
+            self.value = compiler(*toks)
         else:
             try:
                 self.value = toks[0]
@@ -22,7 +39,6 @@ class Token:
                 self.value = toks
 
     def __call__(self, ctx):
-        # pylint: disable=unused-argument
         return self.value
 
 
@@ -47,29 +63,25 @@ DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
 
 class _Regex(Token):
     def compiler(self, pattern, flags):
-        # pylint: disable=no-self-use
         try:
             return re.compile(pattern, flags)
         except re.error as exc:
             raise ParseException(str(exc)) from exc
 
 
-RegexFlag = Word("ims", exact=1).set_parse_action(
-    lambda toks: getattr(re, toks[0].upper())
-)
+RegexFlag = Word("ims", exact=1).set_parse_action(lambda toks: getattr(re, toks[0].upper()))
 RegexFlags = ZeroOrMore(RegexFlag).set_parse_action(
     lambda toks: reduce(lambda a, b: a | b, toks, 0)
 )
 Regex = (QuotedString("/") + RegexFlags).set_parse_action(_Regex)
 
-Octet = Word(nums, max=3).addCondition(lambda toks: int(toks[0]) <= 255)
+Octet = Word(nums, max=3).add_condition(lambda toks: int(toks[0]) <= 255)
 IpAddr = Combine(Octet + "." + Octet + "." + Octet + "." + Octet)
-Cidr = Word(nums, max=2).addCondition(lambda toks: int(toks[0]) <= 32)
+Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 
 
 class _Subnet(Token):
     def compiler(self, subnet):
-        # pylint: disable=no-self-use
         return ipcalc.Network(subnet)
 
 
@@ -94,16 +106,18 @@ class _Symbol(Token):
         return value
 
 
-Symbol = Word((alphas + "_"), bodyChars=(alphas + nums + "." + "_")).set_parse_action(_Symbol)
+Symbol = Word((alphas + "_"), body_chars=(alphas + nums + "." + "_")).set_parse_action(_Symbol)
 
 
-Value = MatchFirst([
-    DateTime,
-    Date,
-    Time,
-    quoted_string.set_parse_action(remove_quotes),
-    Word(nums).set_parse_action(lambda toks: int(toks[0])),
-]).set_parse_action(Token)
+Value = MatchFirst(
+    [
+        DateTime,
+        Date,
+        Time,
+        quoted_string.set_parse_action(remove_quotes),
+        Word(nums).set_parse_action(lambda toks: int(toks[0])),
+    ]
+).set_parse_action(Token)
 
 
 class _List(Token):
@@ -139,21 +153,22 @@ def re_op(lhs, rhs):
 
 
 # Operators
-ComparisonOp = MatchFirst([
-    Literal("==").set_parse_action(lambda toks: operator.eq),
-    Literal("!=").set_parse_action(lambda toks: operator.ne),
-    Literal("<=").set_parse_action(lambda toks: operator.le),
-    Literal("<").set_parse_action(lambda toks: operator.lt),
-    Literal(">=").set_parse_action(lambda toks: operator.ge),
-    Literal(">").set_parse_action(lambda toks: operator.gt),
-    Keyword("in").set_parse_action(lambda toks: in_op),
-    Literal("=~").set_parse_action(lambda toks: re_op),
-])
+ComparisonOp = MatchFirst(
+    [
+        Literal("==").set_parse_action(lambda toks: operator.eq),
+        Literal("!=").set_parse_action(lambda toks: operator.ne),
+        Literal("<=").set_parse_action(lambda toks: operator.le),
+        Literal("<").set_parse_action(lambda toks: operator.lt),
+        Literal(">=").set_parse_action(lambda toks: operator.ge),
+        Literal(">").set_parse_action(lambda toks: operator.gt),
+        Keyword("in").set_parse_action(lambda toks: in_op),
+        Literal("=~").set_parse_action(lambda toks: re_op),
+    ]
+)
 
 
 class _Not(Token):
     def compiler(self, *toks):
-        # pylint: disable=no-self-use
         return toks[0][1]
 
     def __call__(self, ctx):
@@ -162,7 +177,6 @@ class _Not(Token):
 
 class _And(Token):
     def compiler(self, *toks):
-        # pylint: disable=no-self-use
         return toks[0][0::2]
 
     def __call__(self, ctx):
@@ -171,7 +185,6 @@ class _And(Token):
 
 class _Or(Token):
     def compiler(self, *toks):
-        # pylint: disable=no-self-use
         return toks[0][0::2]
 
     def __call__(self, ctx):
@@ -191,7 +204,7 @@ RHS = Symbol | Subnet | List | Value | Regex
 class _Statement:
     def __init__(self, lhs, op=None, rhs=None):
         self.lhs = lhs
-        self.op = op  # pylint: disable=invalid-name
+        self.op = op
         self.rhs = rhs
 
     def __call__(self, ctx):
@@ -201,9 +214,7 @@ class _Statement:
         return self.op(self.lhs(ctx), self.rhs(ctx))
 
 
-Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(
-    lambda toks: _Statement(*toks)
-)
+Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(lambda toks: _Statement(*toks))
 
 
 class Expression:

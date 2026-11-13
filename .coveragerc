@@ -1,7 +1,0 @@
-[run]
-# branch = true
-source = filtration
-
-[report]
-include = filtration/*
-show_missing = true

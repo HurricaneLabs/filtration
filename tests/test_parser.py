@@ -1,57 +1,35 @@
-import unittest
-
-from nose2.tools import params
+import pytest
 from pyparsing import ParseException
-import fauxfactory
 
+from filtration import Expression, List, Regex, Statement, Subnet, Symbol, Value
 
-symbol_tests = [
-    fauxfactory.gen_alpha(),
-    "_{0}".format(fauxfactory.gen_alpha()),
-    "{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()),
-    "_{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()),
-    ("'{0}'".format(fauxfactory.gen_alpha()), ParseException),
-    ('"{0}"'.format(fauxfactory.gen_alpha()), ParseException),
-    (fauxfactory.gen_numeric_string(), ParseException),
+SYMBOLS = ["abcXYZ", "_abcXYZ", "abc.XYZ", "_abc.XYZ"]
+NOT_SYMBOLS = ["'abcXYZ'", '"abcXYZ"', "12345"]
+
+VALUES = [
+    "'abcXYZ'",
+    '"abcXYZ"',
+    "12345",
+    "2015-03-01",
+    "12:34:56",
+    "2015-03-01T12:34:56",
 ]
+NOT_VALUES = ["abcXYZ", "_abcXYZ", "abc.XYZ", "_abc.XYZ"]
 
-value_tests = [
-    "'{0}'".format(fauxfactory.gen_alpha()),
-    '"{0}"'.format(fauxfactory.gen_alpha()),
-    fauxfactory.gen_numeric_string(),
-    fauxfactory.gen_date().isoformat(),
-    fauxfactory.gen_time().isoformat(),
-    fauxfactory.gen_datetime().isoformat(),
-    (fauxfactory.gen_alpha(), ParseException),
-    ("_{0}".format(fauxfactory.gen_alpha()), ParseException),
-    ("{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()), ParseException),
-    ("_{0}.{1}".format(fauxfactory.gen_alpha(), fauxfactory.gen_alpha()), ParseException),
-]
+REGEXES = ["/regex/", "/regex/i", "/regex/im"]
+NOT_REGEXES = ["/not[a-valid/", "/not(a-valid/", "/not-a-valid)", "'regex'"]
 
-regex_tests = [
-    "/regex/",
-    "/regex/i",
-    "/regex/im",
-    ("/not[a-valid/", ParseException),
-    ("/not(a-valid/", ParseException),
-    ("/not-a-valid)", ParseException),
-    ("'regex'", ParseException),
-]
-
-subnet_tests = [
+SUBNETS = [
     "0.0.0.0/0",
     "0.0.0.0/8",
     "172.16.0.0/8",
     "192.168.0.0/16",
     "192.168.100.0/24",
     "255.255.255.255/32",
-    ("0.0.0.0", ParseException),
-    ("0.0.0.0/33", ParseException),
-    ("256.256.256.256/0", ParseException),
-    ("256.256.256.256/32", ParseException),
 ]
+NOT_SUBNETS = ["0.0.0.0", "0.0.0.0/33", "256.256.256.256/0", "256.256.256.256/32"]
 
-term_parse_tests = [
+TERMS = [
     "symbol1",
     "symbol1 == symbol2",
     "symbol1 == 'value1'",
@@ -62,101 +40,97 @@ term_parse_tests = [
     "'value1' in symbol1",
 ]
 
-expression_parse_tests = [
+EXPRESSION_FORMATS = [
     "{0}",
     "not {0}",
     "({0})",
     "not ({0})",
-    "{0} and {1}",
-    "{0} or {1}",
-    "{0} and {1} or {2}",
-    "{0} and ({1} or {2})",
-    "{0} or {1} and {2}",
-    "({0} or {1}) and {2}",
+    "{0} and {0}",
+    "{0} or {0}",
+    "{0} and {0} or {0}",
+    "{0} and ({0} or {0})",
+    "{0} or {0} and {0}",
+    "({0} or {0}) and {0}",
 ]
 
 
-def generate_expression_tests():
-    for test_expr_fmt in expression_parse_tests:
-        for (expr_a, expr_b, expr_c) in zip(term_parse_tests, term_parse_tests, term_parse_tests):
-            yield test_expr_fmt.format(expr_a, expr_b, expr_c)
+@pytest.mark.parametrize("expr", SYMBOLS)
+def test_parse_symbol(expr: str) -> None:
+    """A symbol starts with a letter or underscore, then letters, digits, dots or underscores."""
+    Symbol.parse_string(expr, parse_all=True)
 
 
-class TestGrammar(unittest.TestCase):
-    @params(*symbol_tests)
-    def test_parse_symbol(self, test_expr, expect_failure=None):
-        """
-            A symbol begins with a letter or an underscore, and may contain any combination of
-            letters, numbers, dot (".") and underscore ("_")
-        """
-        from filtration import Symbol
+@pytest.mark.parametrize("expr", NOT_SYMBOLS)
+def test_parse_symbol_rejects(expr: str) -> None:
+    """Quoted strings and bare numbers are not symbols."""
+    with pytest.raises(ParseException):
+        Symbol.parse_string(expr)
 
-        if expect_failure is None:
-            Symbol.parseString(test_expr)
-        else:
-            self.assertRaises(expect_failure, Symbol.parseString, test_expr)
 
-    @params(*value_tests)
-    def test_parse_value(self, test_expr, expect_failure=None):
-        """
-            A value is a quoted string, with single or double quotes, or a number.
-        """
-        from filtration import Value
+@pytest.mark.parametrize("expr", VALUES)
+def test_parse_value(expr: str) -> None:
+    """A value is a quoted string, a number, a date, a time or a date/time."""
+    Value.parse_string(expr, parse_all=True)
 
-        if expect_failure is None:
-            Value.parseString(test_expr)
-        else:
-            self.assertRaises(expect_failure, Value.parseString, test_expr)
 
-    @params(*regex_tests)
-    def test_parse_regex(self, test_expr, expect_failure=None):
-        """
-            A regex is a string surrounded by /
-        """
-        from filtration import Regex
+@pytest.mark.parametrize("expr", NOT_VALUES)
+def test_parse_value_rejects(expr: str) -> None:
+    """Bare words are symbols, not values."""
+    with pytest.raises(ParseException):
+        Value.parse_string(expr)
 
-        if expect_failure is None:
-            Regex.parseString(test_expr)
-        else:
-            self.assertRaises(expect_failure, Regex.parseString, test_expr)
 
-    @params(*subnet_tests)
-    def test_parse_subnet(self, test_expr, expect_failure=None):
-        """
-            Subnets are defined in CIDR notation
-        """
-        from filtration import Subnet
+@pytest.mark.parametrize("expr", REGEXES)
+def test_parse_regex(expr: str) -> None:
+    """A regex is wrapped in / with optional i, m or s flags after it."""
+    Regex.parse_string(expr, parse_all=True)
 
-        if expect_failure is None:
-            Subnet.parseString(test_expr)
-        else:
-            self.assertRaises(expect_failure, Subnet.parseString, test_expr)
 
-    @params(*range(1, 10))
-    def test_parse_valuelist(self, test_expr_len, expect_failure=None):
-        """
-            A list is two or more values, separated by commas
-        """
-        from filtration import List
+@pytest.mark.parametrize("expr", NOT_REGEXES)
+def test_parse_regex_rejects(expr: str) -> None:
+    """Invalid patterns and unslashed strings are not regexes."""
+    with pytest.raises(ParseException):
+        Regex.parse_string(expr)
 
-        test_expr = ",".join(["'value'" for _ in range(0, test_expr_len)])
-        if test_expr_len > 1:
-            List.parseString(test_expr)
-        else:
-            self.assertRaises(ParseException, List.parseString, test_expr)
 
-    @params(*term_parse_tests)
-    def test_parse_statement(self, test_expr, expect_failure=None):
-        """
-        """
-        from filtration import Statement
+@pytest.mark.parametrize("expr", SUBNETS)
+def test_parse_subnet(expr: str) -> None:
+    """Subnets are IPv4 CIDR notation."""
+    Subnet.parse_string(expr, parse_all=True)
 
-        Statement.parseString(test_expr)
 
-    @params(*generate_expression_tests())
-    def test_parse_expression(self, test_expr):
-        """
-        """
-        from filtration import Expression
+@pytest.mark.parametrize("expr", NOT_SUBNETS)
+def test_parse_subnet_rejects(expr: str) -> None:
+    """A bare IP, a prefix over 32 or an octet over 255 is not a subnet."""
+    with pytest.raises(ParseException):
+        Subnet.parse_string(expr)
 
-        Expression.parseString(test_expr)
+
+@pytest.mark.parametrize("length", range(2, 10))
+def test_parse_valuelist(length: int) -> None:
+    """A list is two or more values separated by commas."""
+    List.parse_string(",".join(["'value'"] * length), parse_all=True)
+
+
+def test_parse_valuelist_rejects_single_value() -> None:
+    """One value on its own is not a list."""
+    with pytest.raises(ParseException):
+        List.parse_string("'value'")
+
+
+@pytest.mark.parametrize("expr", TERMS)
+def test_parse_statement(expr: str) -> None:
+    """Each statement form parses."""
+    Statement.parse_string(expr, parse_all=True)
+
+
+@pytest.mark.parametrize("term", TERMS)
+@pytest.mark.parametrize("fmt", EXPRESSION_FORMATS)
+def test_parse_expression(fmt: str, term: str) -> None:
+    """Statements combine with not, and, or and parentheses."""
+    Expression.parse_string(fmt.format(term), parse_all=True)
+
+
+def test_parse_string_camelcase_alias() -> None:
+    """Expression.parseString stays available; libhurricane and Tempest call it."""
+    assert Expression.parseString == Expression.parse_string
