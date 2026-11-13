@@ -62,9 +62,9 @@ RegexFlags = ZeroOrMore(RegexFlag).set_parse_action(
 )
 Regex = (QuotedString("/") + RegexFlags).set_parse_action(_Regex)
 
-Octet = Word(nums, max=3).addCondition(lambda toks: int(toks[0]) <= 255)
+Octet = Word(nums, max=3).add_condition(lambda toks: int(toks[0]) <= 255)
 IpAddr = Combine(Octet + "." + Octet + "." + Octet + "." + Octet)
-Cidr = Word(nums, max=2).addCondition(lambda toks: int(toks[0]) <= 32)
+Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 
 
 class _Subnet(Token):
@@ -94,7 +94,7 @@ class _Symbol(Token):
         return value
 
 
-Symbol = Word((alphas + "_"), bodyChars=(alphas + nums + "." + "_")).set_parse_action(_Symbol)
+Symbol = Word((alphas + "_"), body_chars=(alphas + nums + "." + "_")).set_parse_action(_Symbol)
 
 
 Value = MatchFirst([
