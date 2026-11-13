@@ -18,13 +18,13 @@ Get Filtration
 
 Run the tests
 =============
-You must install nose2, then run:
+With `uv <https://docs.astral.sh/uv/>`_ installed, run:
 
 .. code-block:: shell
 
     git clone https://github.com/HurricaneLabs/filtration.git
     cd filtration
-    nose2
+    uv run pytest
 
 ########
 Usage

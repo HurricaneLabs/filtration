@@ -1,18 +1,23 @@
-import unittest
+from __future__ import annotations
 
-from nose2.tools import params
-
-
+import datetime
 import re
-regex_evaluate_tests = [
+from typing import Any
+
+import pytest
+
+from filtration import Expression, Regex, Subnet, Symbol, Value
+
+REGEX_EVALUATE = [
     ("/abc/", re.compile("abc")),
-    ("/abc/i", re.compile("abc", flags=re.I)),
-    ("/abc/m", re.compile("abc", flags=re.M)),
-    ("/abc/s", re.compile("abc", flags=re.S)),
-    ("/abc/ims", re.compile("abc", flags=re.I | re.M | re.S)),
+    ("/abc/i", re.compile("abc", flags=re.IGNORECASE)),
+    ("/abc/m", re.compile("abc", flags=re.MULTILINE)),
+    ("/abc/s", re.compile("abc", flags=re.DOTALL)),
+    ("/abc/ims", re.compile("abc", flags=re.IGNORECASE | re.MULTILINE | re.DOTALL)),
 ]
 
-expression_evaluate_tests = [
+# (expression that should be true, expression that should be false)
+EXPRESSION_EVALUATE = [
     ("symbol_true", "symbol_false"),
     ("symbol_true and symbol_true", "symbol_true and symbol_false"),
     ("symbol_true or symbol_false", "symbol_false or symbol_false"),
@@ -33,74 +38,61 @@ expression_evaluate_tests = [
 ]
 
 
-class TestTokens(unittest.TestCase):
-    def test_evaluate_symbol(self):
-        """
-        """
-        from filtration import Symbol
+@pytest.fixture
+def context() -> dict[str, Any]:
+    """An evaluation context with one value of each type the grammar compares."""
+    ctx: dict[str, Any] = {
+        "symbol_true": True,
+        "symbol_False": False,
+        "symbol_int": 1,
+        "symbol_str": "a",
+        "symbol_dt": datetime.datetime.now(),
+        "symbol_list": ["abcde", "cdefg"],
+    }
+    ctx["dict"] = ctx
+    return ctx
 
-        sym = Symbol.parseString("symbol")[0]
-        self.assertEqual(sym({"symbol": "value"}), "value")
 
-    def test_evaluate_value(self):
-        """
-        """
-        from filtration import Value
+def test_evaluate_symbol() -> None:
+    """A symbol evaluates to its value in the context."""
+    sym = Symbol.parse_string("symbol")[0]
+    assert sym({"symbol": "value"}) == "value"
 
-        val = Value.parseString("'value'")[0]
-        self.assertEqual(val({}), "value")
 
-    @params(*regex_evaluate_tests)
-    def test_evaluate_regex(self, test_expr, expected):
-        """
-        """
-        from filtration import Regex
+def test_evaluate_value() -> None:
+    """A quoted value evaluates to the string without quotes."""
+    val = Value.parse_string("'value'")[0]
+    assert val({}) == "value"
 
-        rex = Regex.parseString(test_expr)[0]
-        result = rex({})
 
-        self.assertEqual(result.pattern, expected.pattern)
-        self.assertEqual(result.flags, expected.flags)
+@pytest.mark.parametrize(("expr", "expected"), REGEX_EVALUATE)
+def test_evaluate_regex(expr: str, expected: re.Pattern) -> None:
+    """A regex evaluates to a compiled pattern with the flags given."""
+    rex = Regex.parse_string(expr)[0]
+    result = rex({})
+    assert result.pattern == expected.pattern
+    assert result.flags == expected.flags
 
-    def test_evaluate_subnet(self):
-        """
-        """
-        from filtration import Subnet
 
-        subnet = Subnet.parseString("192.168.0.0/16")[0]
-        self.assertEqual(subnet({}).network(), "192.168.0.0")
-        self.assertEqual(subnet({}).size(), 2 ** 16)
+def test_evaluate_subnet() -> None:
+    """A subnet evaluates to a network object."""
+    subnet = Subnet.parse_string("192.168.0.0/16")[0]
+    assert subnet({}).network() == "192.168.0.0"
+    assert subnet({}).size() == 2**16
 
-    @params(*expression_evaluate_tests)
-    def test_evaluate_expression(self, test_expr_true, test_expr_false=None):
-        """
-        """
-        import datetime
-        from filtration import Expression
 
-        context = {
-            "symbol_true": True,
-            "symbol_False": False,
-            "symbol_int": 1,
-            "symbol_str": "a",
-            "symbol_dt": datetime.datetime.now(),
-            "symbol_list": ["abcde", "cdefg"]
-        }
-        context["dict"] = context
+@pytest.mark.parametrize(("expr_true", "expr_false"), EXPRESSION_EVALUATE)
+def test_evaluate_expression(
+    context: dict[str, Any], expr_true: str | None, expr_false: str
+) -> None:
+    """Each operator gives the expected result against the context."""
+    if expr_true:
+        assert Expression.parse_string(expr_true)(context)
+    assert not Expression.parse_string(expr_false)(context)
 
-        if test_expr_true:
-            expr = Expression.parseString(test_expr_true)
-            self.assertTrue(expr(context))
 
-        if test_expr_false:
-            expr = Expression.parseString(test_expr_false)
-            self.assertFalse(expr(context))
-
-    def test_subnet_contains(self):
-        """
-        """
-        from filtration import Expression
-
-        expr = Expression.parseString("src in 127.0.0.0/8")
-        self.assertTrue(expr({"src": "127.0.0.1"}))
-        self.assertFalse(expr({"src": "localhost"}))
+def test_subnet_contains() -> None:
+    """`in` a subnet matches IPs inside it and rejects non-IPs."""
+    expr = Expression.parse_string("src in 127.0.0.0/8")
+    assert expr({"src": "127.0.0.1"})
+    assert not expr({"src": "localhost"})

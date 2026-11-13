@@ -34,3 +34,21 @@ classifiers = [
 
 [tool.setuptools]
 packages = ["filtration"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers -ra"
+testpaths = ["tests"]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+source = ["filtration"]
+
+[tool.coverage.report]
+show_missing = true
