@@ -1,10 +1,47 @@
-name: Publish Python 🐍 distribution 📦 to PyPI
+name: Test and publish Python 🐍 distribution 📦 to PyPI
 
-on: push
+# PyPI's trusted publisher is tied to this file name; don't rename it.
+on:
+  push:
+  pull_request:
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - uses: astral-sh/setup-uv@v10
+    - run: uv run --locked ruff format --check filtration tests
+    - run: uv run --locked ruff check filtration tests
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - uses: astral-sh/setup-uv@v10
+      with:
+        python-version: ${{ matrix.python-version }}
+    - run: uv run --locked pytest --cov
+
   build:
     name: Build distribution 📦
+    needs:
+    - lint
+    - test
     runs-on: ubuntu-latest
 
     steps:
