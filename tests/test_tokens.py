@@ -43,7 +43,7 @@ def context() -> dict[str, Any]:
     """An evaluation context with one value of each type the grammar compares."""
     ctx: dict[str, Any] = {
         "symbol_true": True,
-        "symbol_False": False,
+        "symbol_false": False,
         "symbol_int": 1,
         "symbol_str": "a",
         "symbol_dt": datetime.datetime.now(),
