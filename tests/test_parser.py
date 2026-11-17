@@ -165,3 +165,21 @@ def test_import_leaves_pyparsing_quoted_string_alone() -> None:
     import pyparsing
 
     assert pyparsing.quoted_string.parse_string('"x"')[0] == '"x"'
+
+
+INVALID_DATETIMES = [
+    "2015-13-01",
+    "2015-02-30",
+    "0000-01-01",
+    "25:00:00",
+    "12:60:00",
+    "2015-13-01T12:00:00",
+    "2015-01-01T24:00:00",
+]
+
+
+@pytest.mark.parametrize("value", INVALID_DATETIMES)
+def test_parse_expression_rejects_invalid_datetime(value: str) -> None:
+    """A date or time that doesn't exist is a parse error, not a ValueError from datetime."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(f"a == {value}")

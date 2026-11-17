@@ -50,11 +50,27 @@ Hour = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 Minute = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 Second = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
+
+def _datetime_action(build):
+    # datetime raises ValueError for things like month 13; make that a parse error
+    def action(s, loc, toks):
+        try:
+            return build(toks)
+        except ValueError as exc:
+            raise ParseException(s, loc, str(exc)) from exc
+
+    return action
+
+
 Date = (Year + Suppress("-") + Month + Suppress("-") + Day).set_parse_action(
-    lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
+    _datetime_action(
+        lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
+    )
 )
 Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).set_parse_action(
-    lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
+    _datetime_action(
+        lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
+    )
 )
 DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
     lambda toks: datetime.datetime.combine(toks[0].date(), toks[1].time())
