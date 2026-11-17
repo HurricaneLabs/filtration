@@ -15,6 +15,7 @@ from pyparsing import (
     OpAssoc,
     Optional,
     ParseException,
+    ParseFatalException,
     QuotedString,
     Suppress,
     Word,
@@ -52,12 +53,13 @@ Second = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
 
 def _datetime_action(build):
-    # datetime raises ValueError for things like month 13; make that a parse error
+    # datetime raises ValueError for things like month 13; make that a parse error.
+    # Fatal, so the Value alternatives can't fall back to reading 2015-13-01 as 2015
     def action(s, loc, toks):
         try:
             return build(toks)
         except ValueError as exc:
-            raise ParseException(s, loc, str(exc)) from exc
+            raise ParseFatalException(s, loc, str(exc)) from exc
 
     return action
 
@@ -248,6 +250,10 @@ class Expression:
             lambda toks: _Statement(*toks)
         )
 
-        return expr.parse_string(instring, parse_all=parse_all, **kwargs)[0]
+        try:
+            return expr.parse_string(instring, parse_all=parse_all, **kwargs)[0]
+        except ParseFatalException as exc:
+            # callers catch ParseException, which the fatal one isn't a subclass of
+            raise ParseException(exc.pstr, exc.loc, exc.msg) from exc
 
     parseString = parse_string

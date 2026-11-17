@@ -178,11 +178,12 @@ INVALID_DATETIMES = [
 ]
 
 
+@pytest.mark.parametrize("parse_all", [True, False])
 @pytest.mark.parametrize("value", INVALID_DATETIMES)
-def test_parse_expression_rejects_invalid_datetime(value: str) -> None:
+def test_parse_expression_rejects_invalid_datetime(value: str, parse_all: bool) -> None:
     """A date or time that doesn't exist is a parse error, not a ValueError from datetime."""
     with pytest.raises(ParseException):
-        Expression.parse_string(f"a == {value}")
+        Expression.parse_string(f"a == {value}", parse_all=parse_all)
 
 
 @pytest.mark.parametrize("expr", ["a =~ /x/ i", "a =~ /x/i m"])
