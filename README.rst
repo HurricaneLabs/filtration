@@ -46,6 +46,10 @@ when joining statements together to enforce precedence. For example:
     (a and (b or c))
     >>>
 
+The whole filter must parse. Leftover text, such as the ``b`` in ``a == 1 b``, raises a
+``pyparsing.ParseException`` instead of being ignored. Pass ``parse_all=False`` to get the
+older behavior, which parses as much of the start of the filter as it can and ignores the rest.
+
 Filtration can also be used to parse query string syntax. See below for more information.
 
 Expression Format
