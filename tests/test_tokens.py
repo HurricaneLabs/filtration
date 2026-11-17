@@ -96,3 +96,25 @@ def test_subnet_contains() -> None:
     expr = Expression.parse_string("src in 127.0.0.0/8", parse_all=True)
     assert expr({"src": "127.0.0.1"})
     assert not expr({"src": "localhost"})
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [
+        ("notable == 1", {"notable": 2}),
+        ("nota", {"nota": False}),
+        ("not_x", {"not_x": False}),
+        ("a == 1 or notable == 1", {"a": 2, "notable": 2}),
+    ],
+)
+def test_symbol_starting_with_keyword(expr: str, context: dict[str, Any]) -> None:
+    """A field named like notable is one symbol, not `not` applied to `able`."""
+    assert not Expression.parse_string(expr)(context)
+
+
+@pytest.mark.parametrize(
+    "expr", ["A == 1 AND B == 1", "A == 2 OR B == 1", "NOT A == 2", "Not A == 2 aNd B == 1"]
+)
+def test_boolean_keywords_ignore_case(expr: str) -> None:
+    """and, or and not match in any case."""
+    assert Expression.parse_string(expr)({"A": 1, "B": 1})

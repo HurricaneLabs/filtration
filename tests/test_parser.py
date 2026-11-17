@@ -151,3 +151,10 @@ def test_parse_expression_partial_parse_opt_out(kwarg: str) -> None:
     """Passing parse_all=False (or the old parseAll=False) keeps the lenient prefix match."""
     expr = Expression.parse_string("a == 1 b", **{kwarg: False})
     assert expr({"a": 1})
+
+
+@pytest.mark.parametrize("expr", ["a == 1 orb == 2", "a == 1 andx == 2"])
+def test_parse_expression_rejects_keyword_glued_to_symbol(expr: str) -> None:
+    """`orb` is a symbol, not `or` followed by `b`, so two statements with no operator fail."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(expr)

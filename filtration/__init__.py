@@ -5,7 +5,7 @@ from functools import reduce
 
 import ipcalc
 from pyparsing import (
-    CaselessLiteral,
+    CaselessKeyword,
     Combine,
     Group,
     Keyword,
@@ -192,9 +192,9 @@ class _Or(Token):
 
 
 BooleanOps = [
-    (CaselessLiteral("not"), 1, OpAssoc.RIGHT, _Not),
-    (CaselessLiteral("and"), 2, OpAssoc.LEFT, _And),
-    (CaselessLiteral("or"), 2, OpAssoc.LEFT, _Or),
+    (CaselessKeyword("not"), 1, OpAssoc.RIGHT, _Not),
+    (CaselessKeyword("and"), 2, OpAssoc.LEFT, _And),
+    (CaselessKeyword("or"), 2, OpAssoc.LEFT, _Or),
 ]
 
 LHS = Symbol | Value | Regex
