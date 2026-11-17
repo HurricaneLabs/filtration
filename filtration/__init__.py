@@ -86,8 +86,11 @@ class _Regex(Token):
 
 
 RegexFlag = Word("ims", exact=1).set_parse_action(lambda toks: getattr(re, toks[0].upper()))
-RegexFlags = ZeroOrMore(RegexFlag).set_parse_action(
-    lambda toks: reduce(lambda a, b: a | b, toks, 0)
+# flags must touch the closing slash, so `/x/ in b` reads in as the operator
+RegexFlags = (
+    ZeroOrMore(RegexFlag)
+    .leave_whitespace()
+    .set_parse_action(lambda toks: reduce(lambda a, b: a | b, toks, 0))
 )
 Regex = (QuotedString("/") + RegexFlags).set_parse_action(_Regex)
 

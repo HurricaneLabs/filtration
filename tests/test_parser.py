@@ -183,3 +183,15 @@ def test_parse_expression_rejects_invalid_datetime(value: str) -> None:
     """A date or time that doesn't exist is a parse error, not a ValueError from datetime."""
     with pytest.raises(ParseException):
         Expression.parse_string(f"a == {value}")
+
+
+@pytest.mark.parametrize("expr", ["a =~ /x/ i", "a =~ /x/i m"])
+def test_parse_expression_rejects_spaced_regex_flags(expr: str) -> None:
+    """Regex flags must touch the closing slash; a stray letter after a space is an error."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(expr)
+
+
+def test_parse_regex_before_in() -> None:
+    """The i of `in` after a regex is the operator, not a case-insensitive flag."""
+    Expression.parse_string("/x/ in b")
