@@ -158,3 +158,10 @@ def test_parse_expression_rejects_keyword_glued_to_symbol(expr: str) -> None:
     """`orb` is a symbol, not `or` followed by `b`, so two statements with no operator fail."""
     with pytest.raises(ParseException):
         Expression.parse_string(expr)
+
+
+def test_import_leaves_pyparsing_quoted_string_alone() -> None:
+    """Importing filtration must not change pyparsing's shared quoted_string for other code."""
+    import pyparsing
+
+    assert pyparsing.quoted_string.parse_string('"x"')[0] == '"x"'

@@ -114,7 +114,7 @@ Value = MatchFirst(
         DateTime,
         Date,
         Time,
-        quoted_string.set_parse_action(remove_quotes),
+        quoted_string.copy().set_parse_action(remove_quotes),
         Word(nums).set_parse_action(lambda toks: int(toks[0])),
     ]
 ).set_parse_action(Token)
