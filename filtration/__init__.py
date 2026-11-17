@@ -219,11 +219,16 @@ Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(lambda toks: _
 
 class Expression:
     @classmethod
-    def parse_string(cls, *args, **kwargs):
+    def parse_string(cls, instring, parse_all=True, **kwargs):
+        # whole-input match by default, so a typo can't silently drop the rest of a filter;
+        # parseAll is the old spelling and has to be mapped here or it can't turn this off
+        if "parseAll" in kwargs:
+            parse_all = kwargs.pop("parseAll")
+
         expr = infix_notation(Statement, BooleanOps).set_parse_action(
             lambda toks: _Statement(*toks)
         )
 
-        return expr.parse_string(*args, **kwargs)[0]
+        return expr.parse_string(instring, parse_all=parse_all, **kwargs)[0]
 
     parseString = parse_string

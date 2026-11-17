@@ -134,3 +134,20 @@ def test_parse_expression(fmt: str, term: str) -> None:
 def test_parse_string_camelcase_alias() -> None:
     """Expression.parseString stays available; libhurricane and Tempest call it."""
     assert Expression.parseString == Expression.parse_string
+
+
+PARTIAL_PARSES = ["a == 1 b", "a == 1 )", "a == 'x' 'y'"]
+
+
+@pytest.mark.parametrize("expr", PARTIAL_PARSES)
+def test_parse_expression_rejects_trailing_input(expr: str) -> None:
+    """By default the whole filter must parse; leftover text is an error, not silently dropped."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(expr)
+
+
+@pytest.mark.parametrize("kwarg", ["parse_all", "parseAll"])
+def test_parse_expression_partial_parse_opt_out(kwarg: str) -> None:
+    """Passing parse_all=False (or the old parseAll=False) keeps the lenient prefix match."""
+    expr = Expression.parse_string("a == 1 b", **{kwarg: False})
+    assert expr({"a": 1})
