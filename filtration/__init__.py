@@ -118,12 +118,15 @@ class _Symbol(Token):
 
         parts = self.value.split(".")
         value = ctx
-        for part in parts:
-            if part in value:
-                value = value[part]
-            else:
-                value = None
-                break
+        try:
+            for part in parts:
+                if part in value:
+                    value = value[part]
+                else:
+                    return None
+        except TypeError:
+            # a value partway down isn't a dict (a string, number, list or None)
+            return None
         return value
 
 

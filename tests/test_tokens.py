@@ -118,3 +118,10 @@ def test_symbol_starting_with_keyword(expr: str, context: dict[str, Any]) -> Non
 def test_boolean_keywords_ignore_case(expr: str) -> None:
     """and, or and not match in any case."""
     assert Expression.parse_string(expr)({"A": 1, "B": 1})
+
+
+@pytest.mark.parametrize("middle", ["xcx", 5, None, ["c"]])
+def test_symbol_through_non_dict_is_missing(middle: Any) -> None:
+    """A dotted lookup through a value that isn't a dict finds nothing instead of crashing."""
+    sym = Symbol.parse_string("a.b.c", parse_all=True)[0]
+    assert sym({"a": {"b": middle}}) is None
