@@ -40,6 +40,9 @@ class Token:
                 self.value = toks
 
     def __call__(self, ctx):
+        if isinstance(self.value, datetime.time):
+            # a bare time means that time on the day the filter runs
+            return datetime.datetime.combine(datetime.date.today(), self.value)
         return self.value
 
 
@@ -69,13 +72,12 @@ Date = (Year + Suppress("-") + Month + Suppress("-") + Day).set_parse_action(
         lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
     )
 )
+# a plain time, not a datetime: the day is filled in when the filter runs (Token.__call__)
 Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).set_parse_action(
-    _datetime_action(
-        lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
-    )
+    _datetime_action(lambda toks: datetime.time(*toks))
 )
 DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
-    lambda toks: datetime.datetime.combine(toks[0].date(), toks[1].time())
+    lambda toks: datetime.datetime.combine(toks[0].date(), toks[1])
 )
 
 

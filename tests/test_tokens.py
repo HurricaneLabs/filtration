@@ -217,3 +217,19 @@ def test_comparison_type_mismatch_raises(expr: str, context: dict[str, Any]) -> 
     """Values that can't be compared still raise, so a wrong filter stays visible."""
     with pytest.raises(TypeError):
         Expression.parse_string(expr)(context)
+
+
+def test_time_uses_the_day_it_is_evaluated(time_machine: Any) -> None:
+    """A time literal means that time today, where today is when the filter runs, not parses."""
+    time_machine.move_to(datetime.datetime(2025, 1, 1, 9, 0))
+    expr = Expression.parse_string("t > 12:00:00")
+    time_machine.move_to(datetime.datetime(2025, 1, 2, 9, 0))
+    assert expr({"t": datetime.datetime(2025, 1, 2, 13, 0)})
+    assert not expr({"t": datetime.datetime(2025, 1, 1, 13, 0)})
+
+
+@pytest.mark.parametrize("value", ["2015-01-01T12:34:56", "2015-01-01 12:34:56"])
+def test_datetime_literal(value: str) -> None:
+    """A date with a time is that exact moment."""
+    expr = Expression.parse_string(f"t == {value}")
+    assert expr({"t": datetime.datetime(2015, 1, 1, 12, 34, 56)})

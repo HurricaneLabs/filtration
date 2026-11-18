@@ -38,6 +38,7 @@ dev = [
     "pytest-cov>=5",
     # pinned so new ruff releases can't fail CI without a code change
     "ruff==0.17.5",
+    "time-machine>=2.14",
 ]
 
 [tool.pytest.ini_options]
