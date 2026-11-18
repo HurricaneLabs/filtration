@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import datetime
+import io
 import ipaddress
+import pickle
 import re
 from typing import Any
 
+import ipcalc
 import pytest
 
 from filtration import Expression, Regex, Subnet, Symbol, Value
@@ -76,9 +79,10 @@ def test_evaluate_regex(expr: str, expected: re.Pattern) -> None:
 
 
 def test_evaluate_subnet() -> None:
-    """A subnet evaluates to an ipaddress network."""
-    subnet = Subnet.parse_string("192.168.0.0/16", parse_all=True)[0]
-    assert subnet({}) == ipaddress.ip_network("192.168.0.0/16")
+    """A subnet is stored as an ipcalc network, so runbook bundles pickle as they did in 2.x."""
+    subnet = Subnet.parse_string("192.168.0.1/16", parse_all=True)[0]
+    assert isinstance(subnet({}), ipcalc.Network)
+    assert str(subnet({})) == "192.168.0.0/16"
 
 
 def test_subnet_with_host_bits() -> None:
@@ -245,3 +249,72 @@ def test_datetime_literal(value: str) -> None:
 def test_bare_field_returns_bool(context: dict[str, Any], expected: bool) -> None:
     """A filter that is just a field name is True when the field's value is truthy."""
     assert Expression.parse_string("a")(context) is expected
+
+
+@pytest.mark.parametrize(
+    "network", [ipaddress.ip_network("10.0.0.0/8"), ipcalc.Network("10.0.0.0/8")]
+)
+@pytest.mark.parametrize(
+    ("src", "expected"), [("10.1.2.3", True), ("10.0.0.0/7", False), ("localhost", False)]
+)
+def test_in_subnet_from_either_network_type(network: Any, src: str, expected: bool) -> None:
+    """`in` checks the same way whether the subnet is an ipaddress or an ipcalc network.
+
+    A runbook bundle pickled by filtration 2.x holds ipcalc networks, and this version must
+    evaluate those exactly as it evaluates its own.
+    """
+    assert Expression.parse_string("src in net")({"src": src, "net": network}) is expected
+
+
+# Every name a pickled filter may reference; each exists in filtration 2.3.2, so a pickle
+# built with this version can be loaded there. This checks names only, not results.
+# Bare time literals are left out on purpose: they pickle as datetime.time, which 2.x
+# can't compare, so filters meant for 2.x readers can't use them.
+NAMES_OLDER_READERS_HAVE = {
+    "_operator.eq",
+    "_operator.ge",
+    "_operator.gt",
+    "_operator.le",
+    "_operator.lt",
+    "_operator.ne",
+    "datetime.datetime",
+    "filtration.Token",
+    "filtration._And",
+    "filtration._List",
+    "filtration._Not",
+    "filtration._Or",
+    "filtration._Regex",
+    "filtration._Statement",
+    "filtration._Subnet",
+    "filtration._Symbol",
+    "filtration.in_op",
+    "filtration.re_op",
+    "ipcalc.Network",
+    "pyparsing.results.ParseResults",
+    "re._compile",
+}
+
+
+@pytest.mark.parametrize(
+    "expr",
+    [
+        "a == 1 and b != 'x'",
+        "a in 'x','y'",
+        "src in 10.169.252.0/24",
+        "a =~ /x/i or not b",
+        "a.b >= 2015-01-01 and c < 2015-01-01T12:00:00",
+    ],
+)
+def test_pickled_filter_uses_only_names_older_readers_have(expr: str) -> None:
+    """A pickled filter references only classes and functions filtration 2.3.2 also has."""
+    seen: set[str] = set()
+
+    class Recorder(pickle.Unpickler):
+        def find_class(self, module: str, name: str) -> Any:
+            seen.add(f"{module}.{name}")
+            return super().find_class(module, name)
+
+    parsed = Expression.parse_string(expr)
+    restored = Recorder(io.BytesIO(pickle.dumps(parsed))).load()
+    assert seen <= NAMES_OLDER_READERS_HAVE, seen - NAMES_OLDER_READERS_HAVE
+    assert isinstance(restored({}), bool)

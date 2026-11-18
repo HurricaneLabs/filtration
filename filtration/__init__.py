@@ -5,6 +5,7 @@ import re
 from functools import reduce
 from typing import Union
 
+import ipcalc
 from pyparsing import (
     CaselessKeyword,
     Combine,
@@ -108,7 +109,11 @@ Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 class _Subnet(Token):
     def compiler(self, subnet):
         # strict=False so 10.0.0.1/8 means 10.0.0.0/8 rather than an error
-        return ipaddress.ip_network(subnet, strict=False)
+        network = ipaddress.ip_network(subnet, strict=False)
+        # stored as ipcalc, the type filtration 2.x pickled into runbook bundles, so a bundle
+        # built with this version still loads and matches in readers on 2.x; in_op checks
+        # with ipaddress either way
+        return ipcalc.Network(str(network))
 
 
 # Octet lets 010 through, but ipaddress rejects leading zeros
@@ -175,6 +180,10 @@ def in_op(lhs, rhs):
     # only a missing field skips the check; 0 and '' are real values
     if lhs is None or rhs is None:
         return False
+
+    if isinstance(rhs, ipcalc.Network):
+        # a Subnet literal, or one unpickled from a bundle built by filtration 2.x
+        rhs = ipaddress.ip_network(str(rhs), strict=False)
 
     if isinstance(rhs, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
         # a list matches a subnet when any item is inside it; one bad item can't sink the rest
