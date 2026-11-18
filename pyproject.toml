@@ -13,6 +13,11 @@ requires-python = ">=3.9"
 dependencies = [
     # 3.0.0 can't parse subnets; 3.0.1 fixed it
     "pyparsing>=3.0.1",
+    # subnets are stored as ipcalc networks because runbook bundles pickle them and
+    # readers on filtration 2.x need that type; the matching itself uses ipaddress
+    "ipcalc>=1.99.0",
+    # ipcalc imports six without declaring it
+    "six>=1.16.0",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

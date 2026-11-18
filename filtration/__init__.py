@@ -5,6 +5,7 @@ import re
 from functools import reduce
 from typing import Union
 
+import ipcalc
 from pyparsing import (
     CaselessKeyword,
     Combine,
@@ -108,7 +109,11 @@ Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 class _Subnet(Token):
     def compiler(self, subnet):
         # strict=False so 10.0.0.1/8 means 10.0.0.0/8 rather than an error
-        return ipaddress.ip_network(subnet, strict=False)
+        network = ipaddress.ip_network(subnet, strict=False)
+        # stored as ipcalc, the type filtration 2.x pickled into runbook bundles, so a bundle
+        # built with this version still loads and matches in readers on 2.x; in_op checks
+        # with ipaddress either way
+        return ipcalc.Network(str(network))
 
 
 # Octet lets 010 through, but ipaddress rejects leading zeros
@@ -171,10 +176,34 @@ def _in_subnet(item: object, subnet: Union[ipaddress.IPv4Network, ipaddress.IPv6
         return False
 
 
+def _from_ipcalc(
+    network: ipcalc.Network,
+) -> Union[ipaddress.IPv4Network, ipaddress.IPv6Network]:
+    """Return network as an ipaddress network, normalized to its network address."""
+    # built from the stored numbers, not the text: a 2.x bundle can hold text like
+    # 010.0.0.0/8 that ipcalc accepted and ipaddress won't parse
+    cls = ipaddress.IPv4Network if network.v == 4 else ipaddress.IPv6Network
+    return cls((network.ip, network.mask), strict=False)
+
+
+def _network_eq(network: ipcalc.Network, other: object) -> bool:
+    """Return True if other is the same network as network, an ipcalc.Network."""
+    if other is None or isinstance(other, tuple):
+        return False
+    try:
+        return ipaddress.ip_network(other, strict=False) == _from_ipcalc(network)
+    except (TypeError, ValueError):
+        return False
+
+
 def in_op(lhs, rhs):
     # only a missing field skips the check; 0 and '' are real values
     if lhs is None or rhs is None:
         return False
+
+    if isinstance(rhs, ipcalc.Network):
+        # a Subnet literal, or one unpickled from a bundle built by filtration 2.x
+        rhs = _from_ipcalc(rhs)
 
     if isinstance(rhs, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
         # a list matches a subnet when any item is inside it; one bad item can't sink the rest
@@ -261,6 +290,10 @@ class _Statement:
         # so op stays a stdlib operator that older filtration can still unpickle
         if self.op in ORDERING_OPS and (lhs is None or rhs is None):
             return False
+        # ipcalc's own == parses the other side and raises on a missing or non-IP field
+        if self.op in (operator.eq, operator.ne) and isinstance(rhs, ipcalc.Network):
+            equal = _network_eq(rhs, lhs)
+            return equal if self.op is operator.eq else not equal
 
         return self.op(lhs, rhs)
 
