@@ -181,7 +181,8 @@ def _network_eq(network: ipcalc.Network, other: object) -> bool:
     if other is None or isinstance(other, tuple):
         return False
     try:
-        return ipaddress.ip_network(other, strict=False) == ipaddress.ip_network(str(network))
+        mine = ipaddress.ip_network(str(network), strict=False)
+        return ipaddress.ip_network(other, strict=False) == mine
     except (TypeError, ValueError):
         return False
 

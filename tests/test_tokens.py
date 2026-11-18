@@ -336,3 +336,9 @@ def test_equality_against_subnet(context: dict[str, Any], equal: bool) -> None:
     """== and != against a subnet compare networks; a missing or non-IP field just isn't equal."""
     assert Expression.parse_string("src == 10.0.0.0/8")(context) is equal
     assert Expression.parse_string("src != 10.0.0.0/8")(context) is not equal
+
+
+def test_equality_against_network_with_host_bits() -> None:
+    """An ipcalc network that kept host bits (as 2.x stored them) still equals its network."""
+    expr = Expression.parse_string("src == net")
+    assert expr({"src": "10.0.0.0/8", "net": ipcalc.Network("10.0.0.1/8")})
