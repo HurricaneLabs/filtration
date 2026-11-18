@@ -5,7 +5,7 @@ from functools import reduce
 
 import ipcalc
 from pyparsing import (
-    CaselessLiteral,
+    CaselessKeyword,
     Combine,
     Group,
     Keyword,
@@ -15,6 +15,7 @@ from pyparsing import (
     OpAssoc,
     Optional,
     ParseException,
+    ParseFatalException,
     QuotedString,
     Suppress,
     Word,
@@ -50,11 +51,28 @@ Hour = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 Minute = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 Second = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
+
+def _datetime_action(build):
+    # datetime raises ValueError for things like month 13; make that a parse error.
+    # Fatal, so the Value alternatives can't fall back to reading 2015-13-01 as 2015
+    def action(s, loc, toks):
+        try:
+            return build(toks)
+        except ValueError as exc:
+            raise ParseFatalException(s, loc, str(exc)) from exc
+
+    return action
+
+
 Date = (Year + Suppress("-") + Month + Suppress("-") + Day).set_parse_action(
-    lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
+    _datetime_action(
+        lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
+    )
 )
 Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).set_parse_action(
-    lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
+    _datetime_action(
+        lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
+    )
 )
 DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
     lambda toks: datetime.datetime.combine(toks[0].date(), toks[1].time())
@@ -70,8 +88,11 @@ class _Regex(Token):
 
 
 RegexFlag = Word("ims", exact=1).set_parse_action(lambda toks: getattr(re, toks[0].upper()))
-RegexFlags = ZeroOrMore(RegexFlag).set_parse_action(
-    lambda toks: reduce(lambda a, b: a | b, toks, 0)
+# flags must touch the closing slash, so `/x/ in b` reads in as the operator
+RegexFlags = (
+    ZeroOrMore(RegexFlag)
+    .leave_whitespace()
+    .set_parse_action(lambda toks: reduce(lambda a, b: a | b, toks, 0))
 )
 Regex = (QuotedString("/") + RegexFlags).set_parse_action(_Regex)
 
@@ -114,7 +135,7 @@ Value = MatchFirst(
         DateTime,
         Date,
         Time,
-        quoted_string.set_parse_action(remove_quotes),
+        quoted_string.copy().set_parse_action(remove_quotes),
         Word(nums).set_parse_action(lambda toks: int(toks[0])),
     ]
 ).set_parse_action(Token)
@@ -192,9 +213,9 @@ class _Or(Token):
 
 
 BooleanOps = [
-    (CaselessLiteral("not"), 1, OpAssoc.RIGHT, _Not),
-    (CaselessLiteral("and"), 2, OpAssoc.LEFT, _And),
-    (CaselessLiteral("or"), 2, OpAssoc.LEFT, _Or),
+    (CaselessKeyword("not"), 1, OpAssoc.RIGHT, _Not),
+    (CaselessKeyword("and"), 2, OpAssoc.LEFT, _And),
+    (CaselessKeyword("or"), 2, OpAssoc.LEFT, _Or),
 ]
 
 LHS = Symbol | Value | Regex
@@ -219,11 +240,20 @@ Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(lambda toks: _
 
 class Expression:
     @classmethod
-    def parse_string(cls, *args, **kwargs):
+    def parse_string(cls, instring, parse_all=True, **kwargs):
+        # whole-input match by default, so a typo can't silently drop the rest of a filter;
+        # parseAll is the old spelling and has to be mapped here or it can't turn this off
+        if "parseAll" in kwargs:
+            parse_all = kwargs.pop("parseAll")
+
         expr = infix_notation(Statement, BooleanOps).set_parse_action(
             lambda toks: _Statement(*toks)
         )
 
-        return expr.parse_string(*args, **kwargs)[0]
+        try:
+            return expr.parse_string(instring, parse_all=parse_all, **kwargs)[0]
+        except ParseFatalException as exc:
+            # callers catch ParseException, which the fatal one isn't a subclass of
+            raise ParseException(exc.pstr, exc.loc, exc.msg) from exc
 
     parseString = parse_string

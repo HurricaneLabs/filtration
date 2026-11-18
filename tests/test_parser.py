@@ -134,3 +134,65 @@ def test_parse_expression(fmt: str, term: str) -> None:
 def test_parse_string_camelcase_alias() -> None:
     """Expression.parseString stays available; libhurricane and Tempest call it."""
     assert Expression.parseString == Expression.parse_string
+
+
+PARTIAL_PARSES = ["a == 1 b", "a == 1 )", "a == 'x' 'y'"]
+
+
+@pytest.mark.parametrize("expr", PARTIAL_PARSES)
+def test_parse_expression_rejects_trailing_input(expr: str) -> None:
+    """By default the whole filter must parse; leftover text is an error, not silently dropped."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(expr)
+
+
+@pytest.mark.parametrize("kwarg", ["parse_all", "parseAll"])
+def test_parse_expression_partial_parse_opt_out(kwarg: str) -> None:
+    """Passing parse_all=False (or the old parseAll=False) keeps the lenient prefix match."""
+    expr = Expression.parse_string("a == 1 b", **{kwarg: False})
+    assert expr({"a": 1})
+
+
+@pytest.mark.parametrize("expr", ["a == 1 orb == 2", "a == 1 andx == 2"])
+def test_parse_expression_rejects_keyword_glued_to_symbol(expr: str) -> None:
+    """`orb` is a symbol, not `or` followed by `b`, so two statements with no operator fail."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(expr)
+
+
+def test_import_leaves_pyparsing_quoted_string_alone() -> None:
+    """Importing filtration must not change pyparsing's shared quoted_string for other code."""
+    import pyparsing
+
+    assert pyparsing.quoted_string.parse_string('"x"')[0] == '"x"'
+
+
+INVALID_DATETIMES = [
+    "2015-13-01",
+    "2015-02-30",
+    "0000-01-01",
+    "25:00:00",
+    "12:60:00",
+    "2015-13-01T12:00:00",
+    "2015-01-01T24:00:00",
+]
+
+
+@pytest.mark.parametrize("parse_all", [True, False])
+@pytest.mark.parametrize("value", INVALID_DATETIMES)
+def test_parse_expression_rejects_invalid_datetime(value: str, parse_all: bool) -> None:
+    """A date or time that doesn't exist is a parse error, not a ValueError from datetime."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(f"a == {value}", parse_all=parse_all)
+
+
+@pytest.mark.parametrize("expr", ["a =~ /x/ i", "a =~ /x/i m"])
+def test_parse_expression_rejects_spaced_regex_flags(expr: str) -> None:
+    """Regex flags must touch the closing slash; a stray letter after a space is an error."""
+    with pytest.raises(ParseException):
+        Expression.parse_string(expr)
+
+
+def test_parse_regex_before_in() -> None:
+    """The i of `in` after a regex is the operator, not a case-insensitive flag."""
+    Expression.parse_string("/x/ in b")
