@@ -176,13 +176,22 @@ def _in_subnet(item: object, subnet: Union[ipaddress.IPv4Network, ipaddress.IPv6
         return False
 
 
+def _from_ipcalc(
+    network: ipcalc.Network,
+) -> Union[ipaddress.IPv4Network, ipaddress.IPv6Network]:
+    """Return network as an ipaddress network, normalized to its network address."""
+    # built from the stored numbers, not the text: a 2.x bundle can hold text like
+    # 010.0.0.0/8 that ipcalc accepted and ipaddress won't parse
+    cls = ipaddress.IPv4Network if network.v == 4 else ipaddress.IPv6Network
+    return cls((network.ip, network.mask), strict=False)
+
+
 def _network_eq(network: ipcalc.Network, other: object) -> bool:
     """Return True if other is the same network as network, an ipcalc.Network."""
     if other is None or isinstance(other, tuple):
         return False
     try:
-        mine = ipaddress.ip_network(str(network), strict=False)
-        return ipaddress.ip_network(other, strict=False) == mine
+        return ipaddress.ip_network(other, strict=False) == _from_ipcalc(network)
     except (TypeError, ValueError):
         return False
 
@@ -194,7 +203,7 @@ def in_op(lhs, rhs):
 
     if isinstance(rhs, ipcalc.Network):
         # a Subnet literal, or one unpickled from a bundle built by filtration 2.x
-        rhs = ipaddress.ip_network(str(rhs), strict=False)
+        rhs = _from_ipcalc(rhs)
 
     if isinstance(rhs, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
         # a list matches a subnet when any item is inside it; one bad item can't sink the rest

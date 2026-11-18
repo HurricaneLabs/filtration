@@ -342,3 +342,11 @@ def test_equality_against_network_with_host_bits() -> None:
     """An ipcalc network that kept host bits (as 2.x stored them) still equals its network."""
     expr = Expression.parse_string("src == net")
     assert expr({"src": "10.0.0.0/8", "net": ipcalc.Network("10.0.0.1/8")})
+
+
+@pytest.mark.parametrize(
+    ("expr", "src"), [("src in net", "10.1.2.3"), ("src == net", "10.0.0.0/8")]
+)
+def test_legacy_network_with_leading_zeros(expr: str, src: str) -> None:
+    """A 2.x bundle can hold 010.0.0.0/8, which ipaddress won't parse as text; it still matches."""
+    assert Expression.parse_string(expr)({"src": src, "net": ipcalc.Network("010.0.0.0/8")})
