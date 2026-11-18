@@ -160,11 +160,14 @@ List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).set_parse_action
 
 def _in_subnet(item: object, subnet: Union[ipaddress.IPv4Network, ipaddress.IPv6Network]) -> bool:
     """Return True if item is an IP or subnet that falls inside subnet."""
+    if isinstance(item, tuple):
+        # ip_network reads a tuple as (address, prefix) and raises all sorts on bad ones
+        return False
     try:
         # an IP becomes a single-address network, so IPs and subnets share one check
         return ipaddress.ip_network(item, strict=False).subnet_of(subnet)
-    except (TypeError, ValueError, IndexError):
-        # not an IP (an empty tuple gives IndexError), or IPv6 against an IPv4 subnet
+    except (TypeError, ValueError):
+        # not an IP, or IPv6 against an IPv4 subnet
         return False
 
 

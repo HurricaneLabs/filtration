@@ -169,6 +169,8 @@ def test_regex_on_number_raises() -> None:
         (["192.168.0.1", "10.1.2.3"], True),
         (["192.168.0.1", "localhost"], False),
         ([(), "10.1.2.3"], True),
+        ([("10.1.2.3", None), "10.1.2.3"], True),
+        ([("10.0.0.0", 8)], False),  # a tuple isn't an IP, even one ipaddress reads as a network
         ([], False),
     ],
 )
