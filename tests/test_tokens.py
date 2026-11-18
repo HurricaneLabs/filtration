@@ -318,3 +318,21 @@ def test_pickled_filter_uses_only_names_older_readers_have(expr: str) -> None:
     restored = Recorder(io.BytesIO(pickle.dumps(parsed))).load()
     assert seen <= NAMES_OLDER_READERS_HAVE, seen - NAMES_OLDER_READERS_HAVE
     assert isinstance(restored({}), bool)
+
+
+@pytest.mark.parametrize(
+    ("context", "equal"),
+    [
+        ({}, False),
+        ({"src": "hello"}, False),
+        ({"src": ("10.0.0.0", 8)}, False),
+        ({"src": "10.0.0.0/8"}, True),
+        ({"src": "10.0.0.1/8"}, True),  # host bits normalize, as they do in the literal
+        ({"src": "10.0.0.0/16"}, False),
+        ({"src": "11.0.0.1"}, False),
+    ],
+)
+def test_equality_against_subnet(context: dict[str, Any], equal: bool) -> None:
+    """== and != against a subnet compare networks; a missing or non-IP field just isn't equal."""
+    assert Expression.parse_string("src == 10.0.0.0/8")(context) is equal
+    assert Expression.parse_string("src != 10.0.0.0/8")(context) is not equal

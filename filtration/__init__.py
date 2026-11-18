@@ -176,6 +176,16 @@ def _in_subnet(item: object, subnet: Union[ipaddress.IPv4Network, ipaddress.IPv6
         return False
 
 
+def _network_eq(network: ipcalc.Network, other: object) -> bool:
+    """Return True if other is the same network as network, an ipcalc.Network."""
+    if other is None or isinstance(other, tuple):
+        return False
+    try:
+        return ipaddress.ip_network(other, strict=False) == ipaddress.ip_network(str(network))
+    except (TypeError, ValueError):
+        return False
+
+
 def in_op(lhs, rhs):
     # only a missing field skips the check; 0 and '' are real values
     if lhs is None or rhs is None:
@@ -270,6 +280,10 @@ class _Statement:
         # so op stays a stdlib operator that older filtration can still unpickle
         if self.op in ORDERING_OPS and (lhs is None or rhs is None):
             return False
+        # ipcalc's own == parses the other side and raises on a missing or non-IP field
+        if self.op in (operator.eq, operator.ne) and isinstance(rhs, ipcalc.Network):
+            equal = _network_eq(rhs, lhs)
+            return equal if self.op is operator.eq else not equal
 
         return self.op(lhs, rhs)
 
