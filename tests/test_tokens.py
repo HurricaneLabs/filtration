@@ -153,3 +153,19 @@ def test_regex_on_number_raises() -> None:
     """=~ needs a string; 0 now reaches the regex and raises like any other number."""
     with pytest.raises(TypeError):
         Expression.parse_string("a =~ /0/")({"a": 0})
+
+
+@pytest.mark.parametrize(
+    ("ips", "expected"),
+    [
+        (["localhost", "10.1.2.3"], True),
+        (["10.1.2.3", "localhost"], True),
+        (["192.168.0.1", "10.1.2.3"], True),
+        (["192.168.0.1", "localhost"], False),
+        ([], False),
+    ],
+)
+def test_list_in_subnet_checks_each_item(ips: list[str], expected: bool) -> None:
+    """A list matches a subnet when any item is inside it; items that aren't IPs are skipped."""
+    expr = Expression.parse_string("src in 10.0.0.0/8")
+    assert expr({"src": ips}) is expected
