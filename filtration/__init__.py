@@ -163,8 +163,8 @@ def _in_subnet(item: object, subnet: Union[ipaddress.IPv4Network, ipaddress.IPv6
     try:
         # an IP becomes a single-address network, so IPs and subnets share one check
         return ipaddress.ip_network(item, strict=False).subnet_of(subnet)
-    except (TypeError, ValueError):
-        # not an IP, or IPv6 against an IPv4 subnet
+    except (TypeError, ValueError, IndexError):
+        # not an IP (an empty tuple gives IndexError), or IPv6 against an IPv4 subnet
         return False
 
 

@@ -168,6 +168,7 @@ def test_regex_on_number_raises() -> None:
         (["10.1.2.3", "localhost"], True),
         (["192.168.0.1", "10.1.2.3"], True),
         (["192.168.0.1", "localhost"], False),
+        ([(), "10.1.2.3"], True),
         ([], False),
     ],
 )
