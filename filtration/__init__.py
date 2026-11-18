@@ -1,9 +1,9 @@
 import datetime
+import ipaddress
 import operator
 import re
 from functools import reduce
 
-import ipcalc
 from pyparsing import (
     CaselessKeyword,
     Combine,
@@ -103,7 +103,8 @@ Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 
 class _Subnet(Token):
     def compiler(self, subnet):
-        return ipcalc.Network(subnet)
+        # strict=False so 10.0.0.1/8 means 10.0.0.0/8 rather than an error
+        return ipaddress.ip_network(subnet, strict=False)
 
 
 Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_Subnet)
@@ -152,19 +153,26 @@ class _List(Token):
 List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).set_parse_action(_List)
 
 
+def _in_subnet(item, subnet):
+    try:
+        # an IP becomes a single-address network, so IPs and subnets share one check
+        return ipaddress.ip_network(item, strict=False).subnet_of(subnet)
+    except (TypeError, ValueError):
+        # not an IP, or IPv6 against an IPv4 subnet
+        return False
+
+
 def in_op(lhs, rhs):
     # only a missing field skips the check; 0 and '' are real values
     if lhs is None or rhs is None:
         return False
 
-    # a list matches a subnet when any item is inside it; one bad item can't sink the rest
-    if isinstance(lhs, list) and isinstance(rhs, ipcalc.Network):
-        return any(in_op(item, rhs) for item in lhs)
+    if isinstance(rhs, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
+        # a list matches a subnet when any item is inside it; one bad item can't sink the rest
+        items = lhs if isinstance(lhs, list) else [lhs]
+        return any(_in_subnet(item, rhs) for item in items)
 
-    try:
-        return operator.contains(rhs, lhs)
-    except ValueError:
-        return False
+    return operator.contains(rhs, lhs)
 
 
 def re_op(lhs, rhs):

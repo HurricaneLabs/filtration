@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import ipaddress
 import re
 from typing import Any
 
@@ -75,10 +76,15 @@ def test_evaluate_regex(expr: str, expected: re.Pattern) -> None:
 
 
 def test_evaluate_subnet() -> None:
-    """A subnet evaluates to a network object."""
+    """A subnet evaluates to an ipaddress network."""
     subnet = Subnet.parse_string("192.168.0.0/16", parse_all=True)[0]
-    assert subnet({}).network() == "192.168.0.0"
-    assert subnet({}).size() == 2**16
+    assert subnet({}) == ipaddress.ip_network("192.168.0.0/16")
+
+
+def test_subnet_with_host_bits() -> None:
+    """A subnet written with host bits set still parses, as the network it belongs to."""
+    expr = Expression.parse_string("src in 10.0.0.1/8")
+    assert expr({"src": "10.2.3.4"})
 
 
 @pytest.mark.parametrize(("expr_true", "expr_false"), EXPRESSION_EVALUATE)
@@ -169,3 +175,23 @@ def test_list_in_subnet_checks_each_item(ips: list[str], expected: bool) -> None
     """A list matches a subnet when any item is inside it; items that aren't IPs are skipped."""
     expr = Expression.parse_string("src in 10.0.0.0/8")
     assert expr({"src": ips}) is expected
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        ("10.1.2.3", True),
+        (167837955, True),  # 10.1.2.3 as an int
+        ("10.1.0.0/16", True),
+        ("10.0.0.0/8", True),
+        ("10.0.0.0/7", False),  # bigger than the subnet, so not inside it
+        ("11.0.0.1", False),
+        ("::1", False),
+        ("localhost", False),
+        ("10.1", False),  # ipcalc's shorthand for 10.1.0.0; not an IP to ipaddress
+        (3.5, False),
+    ],
+)
+def test_in_subnet(src: Any, expected: bool) -> None:
+    """IPs and subnets, as strings or ints, match inside the subnet; anything else is False."""
+    assert Expression.parse_string("src in 10.0.0.0/8")({"src": src}) is expected

@@ -13,9 +13,6 @@ requires-python = ">=3.9"
 dependencies = [
     # 3.0.0 can't parse subnets; 3.0.1 fixed it
     "pyparsing>=3.0.1",
-    "ipcalc",
-    # ipcalc imports six without declaring it
-    "six",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
