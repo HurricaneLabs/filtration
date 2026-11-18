@@ -233,3 +233,12 @@ def test_datetime_literal(value: str) -> None:
     """A date with a time is that exact moment."""
     expr = Expression.parse_string(f"t == {value}")
     assert expr({"t": datetime.datetime(2015, 1, 1, 12, 34, 56)})
+
+
+@pytest.mark.parametrize(
+    ("context", "expected"),
+    [({"a": "x"}, True), ({"a": [1]}, True), ({"a": 0}, False), ({"a": ""}, False), ({}, False)],
+)
+def test_bare_field_returns_bool(context: dict[str, Any], expected: bool) -> None:
+    """A filter that is just a field name is True when the field's value is truthy."""
+    assert Expression.parse_string("a")(context) is expected

@@ -58,7 +58,7 @@ Expression Format
 Operators
 ~~~~~~~~~
 These operators control comparison of the LHS to the RHS. If the operator is omitted (and thus
-the RHS is also omitted), the statement returns True IF the symbol in the LHS exists at all.
+the RHS is also omitted), the statement returns True if the LHS has a truthy value.
 
 * Equal ("==")
 * Not equal ("!=")
@@ -144,15 +144,19 @@ whereas this expression would return False:
     False
     >>>
 
-When no operator/RHS is provided, the statement resolves to true if the LHS key exists in the
-context. For example:
+When no operator/RHS is provided, the statement is True if the LHS key is in the context and
+its value is truthy. A missing key, ``0``, ``""``, ``False``, ``None`` or an empty list gives
+False. For example:
 
 .. code-block:: python
 
-    >>> c = {"a": 1, "b": 2, "c": 3}
+    >>> c = {"a": 1, "b": 0, "c": 3}
     >>> expr = Expression.parseString("a")
     >>> expr(c)
     True
+    >>> expr = Expression.parseString("b")
+    >>> expr(c)
+    False
     >>> expr = Expression.parseString("d")
     >>> expr(c)
     False

@@ -246,7 +246,8 @@ class _Statement:
 
     def __call__(self, ctx):
         if self.op is None:
-            return self.lhs(ctx)
+            # a bare field is a truthiness check, so 0, '' and [] are False like a missing one
+            return bool(self.lhs(ctx))
 
         lhs, rhs = self.lhs(ctx), self.rhs(ctx)
         # a missing field can't be ordered; checked here, not in a wrapper function,
