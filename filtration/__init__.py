@@ -55,9 +55,10 @@ Minute = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 Second = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
 
-def _datetime_action(build):
-    # datetime raises ValueError for things like month 13; make that a parse error.
-    # Fatal, so the Value alternatives can't fall back to reading 2015-13-01 as 2015
+def _fatal_on_value_error(build):
+    # datetime and ipaddress raise ValueError for things like month 13 or a 010 octet;
+    # make that a parse error. Fatal, so the Value alternatives can't fall back to
+    # reading 2015-13-01 as 2015 or 010.0.0.0/8 as 10
     def action(s, loc, toks):
         try:
             return build(toks)
@@ -68,13 +69,13 @@ def _datetime_action(build):
 
 
 Date = (Year + Suppress("-") + Month + Suppress("-") + Day).set_parse_action(
-    _datetime_action(
+    _fatal_on_value_error(
         lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
     )
 )
 # a plain time, not a datetime: the day is filled in when the filter runs (Token.__call__)
 Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).set_parse_action(
-    _datetime_action(lambda toks: datetime.time(*toks))
+    _fatal_on_value_error(lambda toks: datetime.time(*toks))
 )
 DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
     lambda toks: datetime.datetime.combine(toks[0].date(), toks[1])
@@ -109,7 +110,8 @@ class _Subnet(Token):
         return ipaddress.ip_network(subnet, strict=False)
 
 
-Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_Subnet)
+# Octet lets 010 through, but ipaddress rejects leading zeros
+Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_fatal_on_value_error(_Subnet))
 
 
 class _Symbol(Token):
