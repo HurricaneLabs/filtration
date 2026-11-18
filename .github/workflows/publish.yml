@@ -54,11 +54,29 @@ jobs:
         python-version: "3.14"
     - run: uv run --upgrade pytest
 
+  # the oldest versions pyproject allows, on the oldest Python, so a floor
+  # like pyparsing>=3.0.1 is tested rather than assumed
+  test-lowest-deps:
+    name: Test (lowest dependencies)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - uses: astral-sh/setup-uv@v10.3.3
+      with:
+        python-version: "3.9"
+    - run: uv run --resolution lowest-direct python -c "import pyparsing; print('pyparsing', pyparsing.__version__)"
+    - run: uv run --resolution lowest-direct pytest
+
   build:
     name: Build distribution 📦
     needs:
     - lint
     - test
+    - test-lowest-deps
     runs-on: ubuntu-latest
 
     steps:

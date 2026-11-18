@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import ipaddress
 import re
 from typing import Any
 
@@ -75,10 +76,15 @@ def test_evaluate_regex(expr: str, expected: re.Pattern) -> None:
 
 
 def test_evaluate_subnet() -> None:
-    """A subnet evaluates to a network object."""
+    """A subnet evaluates to an ipaddress network."""
     subnet = Subnet.parse_string("192.168.0.0/16", parse_all=True)[0]
-    assert subnet({}).network() == "192.168.0.0"
-    assert subnet({}).size() == 2**16
+    assert subnet({}) == ipaddress.ip_network("192.168.0.0/16")
+
+
+def test_subnet_with_host_bits() -> None:
+    """A subnet written with host bits set still parses, as the network it belongs to."""
+    expr = Expression.parse_string("src in 10.0.0.1/8")
+    assert expr({"src": "10.2.3.4"})
 
 
 @pytest.mark.parametrize(("expr_true", "expr_false"), EXPRESSION_EVALUATE)
@@ -118,3 +124,124 @@ def test_symbol_starting_with_keyword(expr: str, context: dict[str, Any]) -> Non
 def test_boolean_keywords_ignore_case(expr: str) -> None:
     """and, or and not match in any case."""
     assert Expression.parse_string(expr)({"A": 1, "B": 1})
+
+
+@pytest.mark.parametrize("middle", ["xcx", 5, None, ["c"]])
+def test_symbol_through_non_dict_is_missing(middle: Any) -> None:
+    """A dotted lookup through a value that isn't a dict finds nothing instead of crashing."""
+    sym = Symbol.parse_string("a.b.c", parse_all=True)[0]
+    assert sym({"a": {"b": middle}}) is None
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [
+        ("port in 0,80", {"port": 0}),
+        ("name in '','x'", {"name": ""}),
+        ("name =~ /^$/", {"name": ""}),
+    ],
+)
+def test_falsy_values_still_match(expr: str, context: dict[str, Any]) -> None:
+    """0 and '' are real values; `in` and `=~` only skip a field that's missing."""
+    assert Expression.parse_string(expr)(context)
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [("a in b", {"a": "x"}), ("a in b", {"b": ["x"]}), ("a =~ /x/", {})],
+)
+def test_missing_side_is_false(expr: str, context: dict[str, Any]) -> None:
+    """A missing field on either side of `in` or `=~` is False, not an error."""
+    assert not Expression.parse_string(expr)(context)
+
+
+def test_regex_on_number_raises() -> None:
+    """=~ needs a string; 0 now reaches the regex and raises like any other number."""
+    with pytest.raises(TypeError):
+        Expression.parse_string("a =~ /0/")({"a": 0})
+
+
+@pytest.mark.parametrize(
+    ("ips", "expected"),
+    [
+        (["localhost", "10.1.2.3"], True),
+        (["10.1.2.3", "localhost"], True),
+        (["192.168.0.1", "10.1.2.3"], True),
+        (["192.168.0.1", "localhost"], False),
+        ([(), "10.1.2.3"], True),
+        ([("10.1.2.3", None), "10.1.2.3"], True),
+        ([("10.0.0.0", 8)], False),  # a tuple isn't an IP, even one ipaddress reads as a network
+        ([], False),
+    ],
+)
+def test_list_in_subnet_checks_each_item(ips: list[str], expected: bool) -> None:
+    """A list matches a subnet when any item is inside it; items that aren't IPs are skipped."""
+    expr = Expression.parse_string("src in 10.0.0.0/8")
+    assert expr({"src": ips}) is expected
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        ("10.1.2.3", True),
+        (167837955, True),  # 10.1.2.3 as an int
+        ("10.1.0.0/16", True),
+        ("10.0.0.0/8", True),
+        ("10.0.0.0/7", False),  # bigger than the subnet, so not inside it
+        ("11.0.0.1", False),
+        ("::1", False),
+        ("localhost", False),
+        ("10.1", False),  # ipcalc's shorthand for 10.1.0.0; not an IP to ipaddress
+        (3.5, False),
+    ],
+)
+def test_in_subnet(src: Any, expected: bool) -> None:
+    """IPs and subnets, as strings or ints, match inside the subnet; anything else is False."""
+    assert Expression.parse_string("src in 10.0.0.0/8")({"src": src}) is expected
+
+
+@pytest.mark.parametrize("expr", ["a < 5", "a <= 5", "a > 5", "a >= 5", "5 < a", "a > b", "x > a"])
+def test_comparison_with_missing_field_is_false(expr: str) -> None:
+    """<, <=, > and >= are False when either side is missing, instead of raising."""
+    assert Expression.parse_string(expr)({"x": 1}) is False
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [
+        ("a < 5", {"a": "x"}),
+        (
+            "created > 2024-01-01",
+            {"created": datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc)},
+        ),
+    ],
+)
+def test_comparison_type_mismatch_raises(expr: str, context: dict[str, Any]) -> None:
+    """Values that can't be compared still raise, so a wrong filter stays visible."""
+    with pytest.raises(TypeError):
+        Expression.parse_string(expr)(context)
+
+
+def test_time_uses_the_day_it_is_evaluated(time_machine: Any) -> None:
+    """A time literal means that time today, where today is when the filter runs, not parses."""
+    time_machine.move_to(datetime.datetime(2025, 1, 1, 9, 0))
+    expr = Expression.parse_string("t > 12:00:00")
+    time_machine.move_to(datetime.datetime(2025, 1, 2, 9, 0))
+    assert expr({"t": datetime.datetime(2025, 1, 2, 13, 0)})
+    assert not expr({"t": datetime.datetime(2025, 1, 1, 13, 0)})
+
+
+@pytest.mark.parametrize("value", ["2015-01-01T12:34:56", "2015-01-01 12:34:56"])
+def test_datetime_literal(value: str) -> None:
+    """A date with a time is that exact moment."""
+    expr = Expression.parse_string(f"t == {value}")
+    assert expr({"t": datetime.datetime(2015, 1, 1, 12, 34, 56)})
+
+
+@pytest.mark.parametrize(
+    ("context", "expected"),
+    [({"a": "x"}, True), ({"a": [1]}, True), ({"a": 0}, False), ({"a": ""}, False), ({}, False)],
+)
+def test_bare_field_returns_bool(context: dict[str, Any], expected: bool) -> None:
+    """A filter that is just a field name is True when the field's value is truthy."""
+    assert Expression.parse_string("a")(context) is expected

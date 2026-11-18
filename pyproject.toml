@@ -13,9 +13,6 @@ requires-python = ">=3.9"
 dependencies = [
     # 3.0.0 can't parse subnets; 3.0.1 fixed it
     "pyparsing>=3.0.1",
-    "ipcalc",
-    # ipcalc imports six without declaring it
-    "six",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -41,6 +38,7 @@ dev = [
     "pytest-cov>=5",
     # pinned so new ruff releases can't fail CI without a code change
     "ruff==0.17.5",
+    "time-machine>=2.14",
 ]
 
 [tool.pytest.ini_options]

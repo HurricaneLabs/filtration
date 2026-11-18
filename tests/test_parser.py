@@ -186,6 +186,13 @@ def test_parse_expression_rejects_invalid_datetime(value: str, parse_all: bool) 
         Expression.parse_string(f"a == {value}", parse_all=parse_all)
 
 
+@pytest.mark.parametrize("parse_all", [True, False])
+def test_parse_expression_rejects_leading_zero_subnet(parse_all: bool) -> None:
+    """A leading-zero octet is a parse error, not a fallback to reading 010 as the number 10."""
+    with pytest.raises(ParseException, match="does not appear to be an IPv4"):
+        Expression.parse_string("a in 010.0.0.0/8 or b == 1", parse_all=parse_all)
+
+
 @pytest.mark.parametrize("expr", ["a =~ /x/ i", "a =~ /x/i m"])
 def test_parse_expression_rejects_spaced_regex_flags(expr: str) -> None:
     """Regex flags must touch the closing slash; a stray letter after a space is an error."""

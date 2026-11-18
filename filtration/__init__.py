@@ -1,9 +1,10 @@
 import datetime
+import ipaddress
 import operator
 import re
 from functools import reduce
+from typing import Union
 
-import ipcalc
 from pyparsing import (
     CaselessKeyword,
     Combine,
@@ -40,6 +41,9 @@ class Token:
                 self.value = toks
 
     def __call__(self, ctx):
+        if isinstance(self.value, datetime.time):
+            # a bare time means that time on the day the filter runs
+            return datetime.datetime.combine(datetime.date.today(), self.value)
         return self.value
 
 
@@ -52,9 +56,10 @@ Minute = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 Second = Word(nums, max=2).set_parse_action(lambda toks: int(toks[0]))
 
 
-def _datetime_action(build):
-    # datetime raises ValueError for things like month 13; make that a parse error.
-    # Fatal, so the Value alternatives can't fall back to reading 2015-13-01 as 2015
+def _fatal_on_value_error(build):
+    # datetime and ipaddress raise ValueError for things like month 13 or a 010 octet;
+    # make that a parse error. Fatal, so the Value alternatives can't fall back to
+    # reading 2015-13-01 as 2015 or 010.0.0.0/8 as 10
     def action(s, loc, toks):
         try:
             return build(toks)
@@ -65,17 +70,16 @@ def _datetime_action(build):
 
 
 Date = (Year + Suppress("-") + Month + Suppress("-") + Day).set_parse_action(
-    _datetime_action(
+    _fatal_on_value_error(
         lambda toks: datetime.datetime.combine(datetime.date(*toks), datetime.time.min)
     )
 )
+# a plain time, not a datetime: the day is filled in when the filter runs (Token.__call__)
 Time = (Hour + Suppress(":") + Minute + Suppress(":") + Second).set_parse_action(
-    _datetime_action(
-        lambda toks: datetime.datetime.combine(datetime.date.today(), datetime.time(*toks))
-    )
+    _fatal_on_value_error(lambda toks: datetime.time(*toks))
 )
 DateTime = (Date + Suppress(Optional("T")) + Time).set_parse_action(
-    lambda toks: datetime.datetime.combine(toks[0].date(), toks[1].time())
+    lambda toks: datetime.datetime.combine(toks[0].date(), toks[1])
 )
 
 
@@ -103,10 +107,12 @@ Cidr = Word(nums, max=2).add_condition(lambda toks: int(toks[0]) <= 32)
 
 class _Subnet(Token):
     def compiler(self, subnet):
-        return ipcalc.Network(subnet)
+        # strict=False so 10.0.0.1/8 means 10.0.0.0/8 rather than an error
+        return ipaddress.ip_network(subnet, strict=False)
 
 
-Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_Subnet)
+# Octet lets 010 through, but ipaddress rejects leading zeros
+Subnet = Combine(IpAddr + "/" + Cidr).set_parse_action(_fatal_on_value_error(_Subnet))
 
 
 class _Symbol(Token):
@@ -118,12 +124,15 @@ class _Symbol(Token):
 
         parts = self.value.split(".")
         value = ctx
-        for part in parts:
-            if part in value:
-                value = value[part]
-            else:
-                value = None
-                break
+        try:
+            for part in parts:
+                if part in value:
+                    value = value[part]
+                else:
+                    return None
+        except TypeError:
+            # a value partway down isn't a dict (a string, number, list or None)
+            return None
         return value
 
 
@@ -149,22 +158,34 @@ class _List(Token):
 List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).set_parse_action(_List)
 
 
-def in_op(lhs, rhs):
-    if not (lhs and rhs):
+def _in_subnet(item: object, subnet: Union[ipaddress.IPv4Network, ipaddress.IPv6Network]) -> bool:
+    """Return True if item is an IP or subnet that falls inside subnet."""
+    if isinstance(item, tuple):
+        # ip_network reads a tuple as (address, prefix) and raises all sorts on bad ones
         return False
-
     try:
-        # If lhs is a list, we need to call ipcalc's contains() function for each item
-        if isinstance(lhs, list) and isinstance(rhs, ipcalc.Network):
-            return any([operator.contains(rhs, list_item) for list_item in lhs])
-
-        return operator.contains(rhs, lhs)
-    except ValueError:
+        # an IP becomes a single-address network, so IPs and subnets share one check
+        return ipaddress.ip_network(item, strict=False).subnet_of(subnet)
+    except (TypeError, ValueError):
+        # not an IP, or IPv6 against an IPv4 subnet
         return False
+
+
+def in_op(lhs, rhs):
+    # only a missing field skips the check; 0 and '' are real values
+    if lhs is None or rhs is None:
+        return False
+
+    if isinstance(rhs, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
+        # a list matches a subnet when any item is inside it; one bad item can't sink the rest
+        items = lhs if isinstance(lhs, list) else [lhs]
+        return any(_in_subnet(item, rhs) for item in items)
+
+    return operator.contains(rhs, lhs)
 
 
 def re_op(lhs, rhs):
-    if not (lhs and rhs):
+    if lhs is None or rhs is None:
         return False
 
     if isinstance(lhs, list):
@@ -221,6 +242,8 @@ BooleanOps = [
 LHS = Symbol | Value | Regex
 RHS = Symbol | Subnet | List | Value | Regex
 
+ORDERING_OPS = (operator.lt, operator.le, operator.gt, operator.ge)
+
 
 class _Statement:
     def __init__(self, lhs, op=None, rhs=None):
@@ -230,9 +253,16 @@ class _Statement:
 
     def __call__(self, ctx):
         if self.op is None:
-            return self.lhs(ctx)
+            # a bare field is a truthiness check, so 0, '' and [] are False like a missing one
+            return bool(self.lhs(ctx))
 
-        return self.op(self.lhs(ctx), self.rhs(ctx))
+        lhs, rhs = self.lhs(ctx), self.rhs(ctx)
+        # a missing field can't be ordered; checked here, not in a wrapper function,
+        # so op stays a stdlib operator that older filtration can still unpickle
+        if self.op in ORDERING_OPS and (lhs is None or rhs is None):
+            return False
+
+        return self.op(lhs, rhs)
 
 
 Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(lambda toks: _Statement(*toks))

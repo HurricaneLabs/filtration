@@ -14,7 +14,7 @@ Get Filtration
 
 .. code-block:: shell
 
-    pip install git+https://github.com/HurricaneLabs/filtration.git
+    pip install filtration
 
 Run the tests
 =============
@@ -31,8 +31,8 @@ Usage
 ########
 Filtration is used to parse "filter expressions" made up of one or more "statements". Each
 statement is comprised of a "left hand side" (LHS), and optionally an operator and a "right hand
-side" (RHS). When no operator and RHS are specified, a special "LHS exists" syntax is assumed. See
-"Expression Evaluation" for more details.
+side" (RHS). When no operator and RHS are specified, the statement checks whether the LHS is
+truthy. See "Expression Evaluation" for more details.
 
 Statements are joined together using "AND" or "OR" to form an expression. Parentheses may be used
 when joining statements together to enforce precedence. For example:
@@ -40,17 +40,16 @@ when joining statements together to enforce precedence. For example:
 .. code-block:: python
 
     >>> from filtration import Expression
-    >>> Expression.parseString("a and b or c")
-    ((a and b) or c)
-    >>> Expression.parseString("a and (b or c)")
-    (a and (b or c))
+    >>> c = {"a": False, "b": False, "c": True}
+    >>> Expression.parseString("a and b or c")(c)  # (a and b) or c
+    True
+    >>> Expression.parseString("a and (b or c)")(c)
+    False
     >>>
 
 The whole filter must parse. Leftover text, such as the ``b`` in ``a == 1 b``, raises a
 ``pyparsing.ParseException`` instead of being ignored. Pass ``parse_all=False`` to get the
 older behavior, which parses as much of the start of the filter as it can and ignores the rest.
-
-Filtration can also be used to parse query string syntax. See below for more information.
 
 Expression Format
 =================
@@ -58,7 +57,7 @@ Expression Format
 Operators
 ~~~~~~~~~
 These operators control comparison of the LHS to the RHS. If the operator is omitted (and thus
-the RHS is also omitted), the statement returns True IF the symbol in the LHS exists at all.
+the RHS is also omitted), the statement returns True if the LHS has a truthy value.
 
 * Equal ("==")
 * Not equal ("!=")
@@ -144,15 +143,19 @@ whereas this expression would return False:
     False
     >>>
 
-When no operator/RHS is provided, the statement resolves to true if the LHS key exists in the
-context. For example:
+When no operator/RHS is provided, the statement is True if the LHS key is in the context and
+its value is truthy. A missing key, ``0``, ``""``, ``False``, ``None`` or an empty list gives
+False. For example:
 
 .. code-block:: python
 
-    >>> c = {"a": 1, "b": 2, "c": 3}
+    >>> c = {"a": 1, "b": 0, "c": 3}
     >>> expr = Expression.parseString("a")
     >>> expr(c)
     True
+    >>> expr = Expression.parseString("b")
+    >>> expr(c)
+    False
     >>> expr = Expression.parseString("d")
     >>> expr(c)
     False
