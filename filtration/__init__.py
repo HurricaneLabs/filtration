@@ -153,7 +153,8 @@ List = Group(Value + OneOrMore(Suppress(Literal(",")) + Value)).set_parse_action
 
 
 def in_op(lhs, rhs):
-    if not (lhs and rhs):
+    # only a missing field skips the check; 0 and '' are real values
+    if lhs is None or rhs is None:
         return False
 
     try:
@@ -167,7 +168,7 @@ def in_op(lhs, rhs):
 
 
 def re_op(lhs, rhs):
-    if not (lhs and rhs):
+    if lhs is None or rhs is None:
         return False
 
     if isinstance(lhs, list):

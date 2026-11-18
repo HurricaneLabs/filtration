@@ -125,3 +125,31 @@ def test_symbol_through_non_dict_is_missing(middle: Any) -> None:
     """A dotted lookup through a value that isn't a dict finds nothing instead of crashing."""
     sym = Symbol.parse_string("a.b.c", parse_all=True)[0]
     assert sym({"a": {"b": middle}}) is None
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [
+        ("port in 0,80", {"port": 0}),
+        ("name in '','x'", {"name": ""}),
+        ("name =~ /^$/", {"name": ""}),
+    ],
+)
+def test_falsy_values_still_match(expr: str, context: dict[str, Any]) -> None:
+    """0 and '' are real values; `in` and `=~` only skip a field that's missing."""
+    assert Expression.parse_string(expr)(context)
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [("a in b", {"a": "x"}), ("a in b", {"b": ["x"]}), ("a =~ /x/", {})],
+)
+def test_missing_side_is_false(expr: str, context: dict[str, Any]) -> None:
+    """A missing field on either side of `in` or `=~` is False, not an error."""
+    assert not Expression.parse_string(expr)(context)
+
+
+def test_regex_on_number_raises() -> None:
+    """=~ needs a string; 0 now reaches the regex and raises like any other number."""
+    with pytest.raises(TypeError):
+        Expression.parse_string("a =~ /0/")({"a": 0})
