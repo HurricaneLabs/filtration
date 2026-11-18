@@ -195,3 +195,25 @@ def test_list_in_subnet_checks_each_item(ips: list[str], expected: bool) -> None
 def test_in_subnet(src: Any, expected: bool) -> None:
     """IPs and subnets, as strings or ints, match inside the subnet; anything else is False."""
     assert Expression.parse_string("src in 10.0.0.0/8")({"src": src}) is expected
+
+
+@pytest.mark.parametrize("expr", ["a < 5", "a <= 5", "a > 5", "a >= 5", "5 < a", "a > b", "x > a"])
+def test_comparison_with_missing_field_is_false(expr: str) -> None:
+    """<, <=, > and >= are False when either side is missing, instead of raising."""
+    assert Expression.parse_string(expr)({"x": 1}) is False
+
+
+@pytest.mark.parametrize(
+    ("expr", "context"),
+    [
+        ("a < 5", {"a": "x"}),
+        (
+            "created > 2024-01-01",
+            {"created": datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc)},
+        ),
+    ],
+)
+def test_comparison_type_mismatch_raises(expr: str, context: dict[str, Any]) -> None:
+    """Values that can't be compared still raise, so a wrong filter stays visible."""
+    with pytest.raises(TypeError):
+        Expression.parse_string(expr)(context)

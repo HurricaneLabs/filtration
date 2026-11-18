@@ -233,6 +233,8 @@ BooleanOps = [
 LHS = Symbol | Value | Regex
 RHS = Symbol | Subnet | List | Value | Regex
 
+ORDERING_OPS = (operator.lt, operator.le, operator.gt, operator.ge)
+
 
 class _Statement:
     def __init__(self, lhs, op=None, rhs=None):
@@ -244,7 +246,13 @@ class _Statement:
         if self.op is None:
             return self.lhs(ctx)
 
-        return self.op(self.lhs(ctx), self.rhs(ctx))
+        lhs, rhs = self.lhs(ctx), self.rhs(ctx)
+        # a missing field can't be ordered; checked here, not in a wrapper function,
+        # so op stays a stdlib operator that older filtration can still unpickle
+        if self.op in ORDERING_OPS and (lhs is None or rhs is None):
+            return False
+
+        return self.op(lhs, rhs)
 
 
 Statement = (LHS + Optional(ComparisonOp + RHS)).set_parse_action(lambda toks: _Statement(*toks))
